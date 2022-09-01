@@ -1,0 +1,21 @@
+% this is just a test of the timestepping of the rossby wave equation. I'm
+% using the analytical solution given in Carl's paper that includes **no
+% forcing**, so all results depend on the initial condition. We assume a
+% square domain with side length L, and psi is zero along all boundaries. 
+
+% The analytical solution is given by 
+%
+%  psi(x, y, t) = sum_m sum_n exp(-i sigma_{nm} t) exp(- i beta x/
+%                  sigma_{nm}) sin(n pi x) sin(m pi y)
+%
+% where
+%           beta - coriolis parameter
+%           sigma_{nm} - dispersion relation
+
+% We then have the equation for sigma_{nm}:
+%        
+%  sigma_{nm} = beta L / ( 2 (m^2 pi^2 + n^2 pi^2)^(1/2) )
+%
+% assuming we have not non-dimensionalized and so L =/= 1.
+
+
