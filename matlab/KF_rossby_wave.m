@@ -1,7 +1,8 @@
 clc, clear
 
 % this script aims to apply the KF to the rossby wave system to reconstruct
-% the coeffecients of the normal modes 
+% the coeffecients of the normal modes. This **does not** include forcing
+% and will be changed
 
 % deciding which modes to keep
 n = 1:5;
