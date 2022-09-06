@@ -12,17 +12,18 @@
 %           coriolis force
 %           sigma_{nm} - dispersion relation
 
-% for the beta-plane approximation ****add to this****
+% For the beta-plane approximation we use the original parameters in Carl's
+% first experiment 
 
 % We then have the equation for sigma_{nm}:
 %        
-%  sigma_{nm} = beta L / ( 2 (m^2 pi^2 + n^2 pi^2)^(1/2) )
+%  sigma_{nm} = - beta / ( 2 (m^2 pi^2 + n^2 pi^2)^(1/2) )
 %
 % assuming we have not non-dimensionalized and so L =/= 1.
 
 dt = 120;
 L = 1; 
-beta = 1;
+beta = 1.7;
 f0 = 1e-4;
 T = 10;
 
@@ -40,21 +41,21 @@ m = 4:9;
 N = length(n); M = length(m);
 [Nn,Mm] = meshgrid(n',m');  
 
-sigma_nm = beta * L ./ ( 2 * pi * sqrt(Nn.^2 + Mm.^2) );
+sigma_nm = -beta ./ ( 2 * pi * sqrt(Nn.^2 + Mm.^2) );
 
-sigma = @(n, m) beta * L / ( 2 * pi * sqrt(n^2 + m^2));
+q_nm = @(t) 0.01 * randn(M*N, 1);
 
-A = diag( exp(-1i * sigma_nm(:) * dt ) );
+for_A = beta * 1i * Nn ./ (pi * Nn.^2 + Mm.^2);
+A = diag ( for_A(:) * dt );
 
-% state_nm = @(t, n, m) exp(-1i * sigma(n, m) * t) * ...
-%                     exp(-1i * beta * x / sigma(n, m));
-           
+B = diag(  2/beta * sigma_nm(:) * dt);
+       
 state = ones(M*N,1);
 mode_coeff = zeros(M*N,T);
 
 for j = 1:T
    
-    state = A * state;
+    state = A * state + B * q_nm(j);
     mode_coeff(:,j) = state;
     
 end

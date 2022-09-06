@@ -82,7 +82,7 @@ for j = 2:M
     
     if sum(j == dataset_1) || sum(j == dataset_2)
         
-        state_now = temp_state + K * (E * data(:, j) - E * temp_state );
+        state_now = temp_state + K * (E * data(:, j) - E * temp_state);
         P_now = temp_P - K * E * temp_P;
     else
         state_now = temp_state;
