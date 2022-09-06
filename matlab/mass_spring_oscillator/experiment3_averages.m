@@ -16,25 +16,21 @@ q = @(t) 0.1 * cos( 2 * pi * t / (2.5 / r) );
 Gamma = x0;
 load('random_forcing_0_1_sd.mat')
 
-% building continuous operators
-[Ac, Kc, Rc] = build_matrices(k, r);
-
-% discrete forward operator 
-A = eye(6) + dt .* Ac; 
-
 % create the "data" for the KF
+E = [0 1/2 1/2 0 0 0;
+     0 0 0 1/2 1/2 0];
+
 load('noise_0_01_sd.mat')
 [A, Ac, Kc, Rc, all_states, eps, k_forcing, ...
     ~, ~] = forward_func(x0, k, r, dt, M, B, q, Gamma, u);
-data = all_states + noise;
+
+% observations are averages 
+data = E * all_states + noise;
 
 % initial values for the Kalman filter
 x0_KF = x0;
 
 P0 = zeros(6);
-
-E = [0 1/2 1/2 0 0 0;
-     0 0 0 1/2 1/2 0];
 
 Q = 0.1^2; 
 
@@ -42,9 +38,9 @@ R = 0.01^2 .* eye(2);
 
 % determining which steps will contain data for the KF
 t = 1:13;
-dataset_1 = [3000 + 300*t];
+dataset_1 = 3000 + 300*t;
 t = 1:24;
-dataset_2 = [7000 + 125*t]; 
+dataset_2 = 7000 + 125*t; 
 
 % known forcing seen by KF
 q_KF = @(t) 0.1 * cos( 2 * pi * t / (2.5 / r) );
@@ -82,7 +78,7 @@ for j = 2:M
     
     if sum(j == dataset_1) || sum(j == dataset_2)
         
-        state_now = temp_state + K * (E * data(:, j) - E * temp_state);
+        state_now = temp_state + K * (data(:, j) - E * temp_state);
         P_now = temp_P - K * E * temp_P;
     else
         state_now = temp_state;
