@@ -1,7 +1,6 @@
 % script computes the same thing as rossby_wave, but added in the ability
 % to plot the actual contours we get from the solution (so a sum of the
 % normal modes). we can also include the time-independent Stommel solution
-
 % this is just a test of the timestepping of the rossby wave equation. I'm
 % using the analytical solution given in Carl's paper that includes **no
 % forcing**, so all results depend on the initial condition. We assume a

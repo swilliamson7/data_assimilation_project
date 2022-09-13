@@ -1,12 +1,13 @@
 % We now want to apply the KF to a forced Rossby wave system. This script
 % will use the function rossby_forward_forced which runs the system with
 % random forcing at every step. We'll assume that the KF does not know
-% about the forcing
+% about the forcing, but has perfect knowledge of A, and near-perfect
+% knowledge of the initial condition
+
+% the solution used here is for periodic x-boundary and zero y-boundary, so
+% not the solution that we wanted to discuss in the manuscript 
 
 clc, clear
-
-% this script aims to apply the KF to the rossby wave system to reconstruct
-% the coeffecients of the normal modes. This **does not** include forcing
 
 % deciding which modes to keep
 n = 1:5;
@@ -21,7 +22,7 @@ L = 1;
 
 dt = 0.01;
 
-% a function for the dispertion relation, depends on n and m, needed to
+% a function for the dispersion relation, depends on n and m, needed to
 % calculate energy later
 
 sigma_func = @(n, m) -beta * (L / 2) / ( sqrt(n^2 * pi^2 + m^2 * pi^2) );
@@ -37,10 +38,10 @@ q_nm = @(t) 0.1 * randn(N*M, 1);
 x0 = 1./(vec_n.^2 + vec_m.^2);
 
 % noise for the data
-noise = 0.001.*randn(N*M, T+1);
+noise = 0.0001.*randn(N*M, T+1);
 
 % creating the data for the system
-[A, sigma_nm, all_states, energy] = rossby_forward_forced(x0, dt, T, n, m, 1, 1, q_nm);
+[A, sigma_nm, all_states, energy] = rw_forward_func_forced(x0, dt, T, n, m, 1, 1, q_nm);
 
 % now we want to run the KF and see if we can reconstruct the coefficients
 
@@ -85,6 +86,7 @@ temp = dt;
 for j = 2:T+1
     
     % step forward
+    %temp_state = A * state_old;
     temp_state = state_old + A * state_old;
     temp_P = A * P_old * A' + Gamma * Q * Gamma';
     

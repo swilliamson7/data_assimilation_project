@@ -19,7 +19,7 @@
 %       energy - energy of the system at every step
 %       
 
-function [A, sigma_nm, all_states, energy] = rossby_forward_forced(x0, dt, T, n, m, beta, L, q) 
+function [A, sigma_nm, all_states, energy] = rw_forward_func_forced(x0, dt, T, n, m, beta, L, q) 
 
 N = length(n); M = length(m);
 [Nn,Mm] = meshgrid(n',m');  
