@@ -25,7 +25,7 @@
 
 clc, clear 
 
-T = 500;   % how many steps to take 
+T = 10000;   % how many steps to take 
 dt = 29;     % time step
 L = 1;       % length of square basin, 1 b/c non-dimensionalized
 b = 1.8e-3;
@@ -56,10 +56,12 @@ sigma_nm = - beta * L ./ ( 2 * pi * sqrt(Nn.^2 + Mm.^2) );
 
 % building the forward operator for stepping the coefficients 
 
-A = exp(-b) .* diag( exp(-1i * sigma_nm(:) * dt ) );    % No time dependence/diss
+% A = diag( exp(-1i * sigma_nm(:) * dt ) );    % No time dependence/diss
+
+A = @(t) exp(-b * t) .* diag( exp(-1i * sigma_nm(:) * dt ) ); % w/diss 
 
 % random forcing, will change to be consistently the same forcing 
-q = @(t) 0.001 * randn(M*N, 1);
+q = @(t) 0.01 * randn(M*N, 1);
 
 % pre-allocating storage for quantities we want to store
 
@@ -85,15 +87,15 @@ energy_RTS = zeros(1, T+1);
 
 % noise to add to the data points to make them a little fuzzy
 
-noise = 0.001.*randn(M*N,T+1);
+noise = 0.01.*randn(M*N,T+1);
 
 %%
 
 % Running the forward model to create the artificial data
 for j = 2:T+1
     
-    state = A * state + q(j);
-
+    % 
+    % state = A * state + q(j);
     all_states(:,j) = state;
     
     energy(j) = sum(abs(state).^2);
@@ -125,7 +127,7 @@ Q = var(q(2)) .* eye(N * M);
 Gamma = eye(N*M); % we apply forcing to all entries of the state vector
 
 % timesteps where we'll incorporate data
-data_steps = 10:10:400;
+data_steps = 10:5:70;
 
 % running the Kalman filter 
 
@@ -134,6 +136,7 @@ P_old = P0;
 temp = dt;
 for j = 2:T+1
 
+    % step forward
     temp_state = A * state_old;
     temp_P = A * P_old * A' + Gamma * Q * Gamma';
     
