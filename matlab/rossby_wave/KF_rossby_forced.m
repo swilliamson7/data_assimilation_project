@@ -10,8 +10,8 @@
 clc, clear
 
 % deciding which modes to keep
-n = 1:5;
-m = 1:6;
+n = 3:5;
+m = 4:9;
 N = length(n); M = length(m);
 [Nn,Mm] = meshgrid(n',m');  
 vec_n = Nn(:);
@@ -25,7 +25,7 @@ dt = 0.01;
 % a function for the dispersion relation, depends on n and m, needed to
 % calculate energy later
 
-sigma_func = @(n, m) -beta * (L / 2) / ( sqrt(n^2 * pi^2 + m^2 * pi^2) );
+sigma_func = @(n, m) beta * (L / 2) / ( sqrt(n^2 * pi^2 + m^2 * pi^2) );
 
 % the number of time steps to take
 T = 10000;

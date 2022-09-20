@@ -23,21 +23,24 @@
 
 %%
 
-clc, clear 
+clc, clear, close 
 
-T = 10000;   % how many steps to take 
+T = 2000;    % how many steps to take 
 dt = 29;     % time step
 L = 1;       % length of square basin, 1 b/c non-dimensionalized
 b = 1.8e-3;
 a = 6.3e6;   % radius of Earth, kilometers
 theta = 30;  % latitude we use for computation of beta and f 
+Ra = 0.2;    % Stommel parameter, from Carl's code 
 
 % Earth's rotation rate
 Omega = 7.2921e-5;         % rads / sec 
 
 % determining beta and f at our given latitude
-beta = 2 * Omega * cosd(theta) / a;
+beta_dim = 2 * Omega * cosd(theta) / a;
 f = 2 * Omega * sind(theta);
+
+beta = beta_dim * a / f;
 
 % the choice of n, m determines which of the modes we keep 
 n = 3:5;
@@ -50,18 +53,21 @@ vec_m = Mm(:);
 % initial condition for the system
 x0 = (1./(vec_n.^2 + vec_m.^2));
 
-% dispersion relation, given as an N by M matrix, with increases in n
-% happening across rows and increases in m happening across columns 
-sigma_nm = - beta * L ./ ( 2 * pi * sqrt(Nn.^2 + Mm.^2) );
+% dispersion relation, given as an N by M matrix, with increases in m
+% happening across rows and increases in n happening across columns 
+sigma_nm = beta * L ./ ( 2 * pi * sqrt(Nn.^2 + Mm.^2) );
+
+% creating a function that computess a specific sigma_nm value
+sigma_func = @(n,m) -beta * L / (2 * pi * sqrt(n^2 + m^2) );
 
 % building the forward operator for stepping the coefficients 
-
-% A = diag( exp(-1i * sigma_nm(:) * dt ) );    % No time dependence/diss
-
-A = @(t) exp(-b * t) .* diag( exp(-1i * sigma_nm(:) * dt ) ); % w/diss 
+A = exp(-b) .* diag( exp(-1i * sigma_nm(:) * dt) );    
 
 % random forcing, will change to be consistently the same forcing 
-q = @(t) 0.01 * randn(M*N, 1);
+load('forcing_1_sd.mat');
+q = 0.003 .* forcing;
+
+% q = @(t) 0.003 .* randn(M*N, 1);
 
 % pre-allocating storage for quantities we want to store
 
@@ -74,28 +80,26 @@ energy = zeros(1, T+1);
 energy(1) = sum(abs(all_states(:,1)).^2);
 
 % storage for the KF computed states and energy
-x0_KF = x0;
+x0_KF = 1.2.*x0;
 all_states_KF = zeros(M*N, T+1);
 all_states_KF(:,1) = x0_KF;        % KF has perfect initial condition
 
 energy_KF = zeros(1, T+1);
 energy_KF(1) = sum(abs(all_states_KF(:,1)).^2);
 
-% storage for the smoothed states and energy
-all_states_RTS = zeros(M*N, T+1);
-energy_RTS = zeros(1, T+1);
-
 % noise to add to the data points to make them a little fuzzy
 
-noise = 0.01.*randn(M*N,T+1);
+% noise = 0.01.*randn(M*N,T+1);
+load('noise_1_sd.mat');
+noise = 0.001.*noise;
 
 %%
 
 % Running the forward model to create the artificial data
 for j = 2:T+1
     
-    % 
-    % state = A * state + q(j);
+    state = A * state + q(j);
+
     all_states(:,j) = state;
     
     energy(j) = sum(abs(state).^2);
@@ -106,7 +110,7 @@ end
 E = eye(N * M);
 
 % adding noise here to make the data a little fuzzy
-data = E * all_states + noise; 
+data = E * all_states + noise(1:T+1); 
 
 %%
 
@@ -123,11 +127,11 @@ uncertainty{1} = P0;
 R = var(noise(:)) .* eye(N * M);
 
 % covariance of random forcing
-Q = var(q(2)) .* eye(N * M);
+Q = var(q(:)) .* eye(N * M);
 Gamma = eye(N*M); % we apply forcing to all entries of the state vector
 
 % timesteps where we'll incorporate data
-data_steps = 10:5:70;
+data_steps = 500:20:1000;
 
 % running the Kalman filter 
 
@@ -136,8 +140,7 @@ P_old = P0;
 temp = dt;
 for j = 2:T+1
 
-    % step forward
-    temp_state = A * state_old;
+    temp_state = A * state_old + .5 .* q(j);
     temp_P = A * P_old * A' + Gamma * Q * Gamma';
     
     % calculate Kalman gain matrix
@@ -178,15 +181,41 @@ end
 % available data has been incorporated, we want to run the RTS smoother
 % backwards to improve the prediction 
 
-% uncertainty_RTS = cell(T+1,1);
-% 
-% for j = T+1:-1:2
-% 
-%     L = uncertainty{j-1} * A' * uncertainty{j};
-%     M = Q * Gamma' * 
-% 
-% end
+% storage for the smoothed states and energy
+all_states_RTS = zeros(M*N, T+1);
+energy_RTS = zeros(1, T+1);
 
+uncertainty_RTS = cell(T+1,1);
+uncertainty_RTS{end} = uncertainty{end};
+
+all_states_RTS(end) = all_states_KF(end);
+
+for j = T:-1:2
+    
+    temp = (A * uncertainty{j-1} * A' + Gamma * Q * Gamma')^(-1);
+    L = uncertainty{j-1} * A' * temp;
+    M = Q * Gamma' * temp;
+
+    all_states_RTS(:, j) = all_states_KF(:, j) + ...
+                L * (all_states_RTS(:, j) - all_states(:, j));
+    uncertainty_RTS{j} = uncertainty{j} + L * (uncertainty_RTS{j+1} ...
+                - temp) * L';
+
+end
+
+temp = (A * uncertainty{1} * A' + Gamma * Q * Gamma')^(-1);
+L2 = uncertainty{1} * A' * temp;
+
+for j = 1:T+1 
+    
+    energy_RTS(j) = sum( abs( all_states_RTS(:,j) ).^2 );
+
+end
+
+% all_states_RTS(:,1) = all_states_KF(:,1) + (uncertainty{1} * A' ...
+%             * (A * uncertainty{1} * A' + Gamma * Q * Gamma')^(-1) ...
+%             * (all_states_RTS(:,2) - all_states_KF(:,2)));
+% uncertainty_RTS{1} = 
 
 %% 
 
@@ -211,14 +240,15 @@ for j = 1:M*N
         
         psi = psi + all_states(j, T) .* exp(-1i .* pi .* X .* vec_n(j) ) ...
             .* sin(vec_m(j) .* pi .* Y);
-        
-        % with the added stommel solution
 
-        psi_KF = psi_KF + exp(-X * 0.29) .* sin(pi .* Y) + (X - 1).* sin(pi .* Y);
-        
-        psi = psi + exp(-X * 0.29) .* sin(pi .* Y) + (X - 1).* sin(pi .* Y);
-        
 end
+
+% with the added stommel solution
+
+psi_KF = psi_KF + exp(-X * beta / Ra) .* sin(pi .* Y) + (X - 1).* sin(pi .* Y);
+
+psi = psi + exp(-X * beta / Ra) .* sin(pi .* Y) + (X - 1).* sin(pi .* Y);
+
 
 %%
 
@@ -226,16 +256,38 @@ end
 
 % creating my figure 10 
 
+% figure()
+% tiledlayout(3,1);
+% 
+% % non-dimensional periods, frequencies, and the logarithm of the initial
+% % condition
+% 
+% sigma_plot = nexttile;
+% plot(2*pi./abs(sigma_nm(:)), '*', 'LineWidth', 1.5);
+% ylabel('Non-dim Periods', 'FontSize', 13)
+% 
+% sigma_inverse = nexttile;
+% plot(abs(sigma_nm(:)), '*', 'LineWidth', 1.5);
+% ylabel('Radian freq.', 'FontSize', 13)
+% 
+% log_initial = nexttile;
+% semilogy(x0(:), '*', 'LineWidth', 1.5)
+% ylabel('Semilog plot of initial cond.', 'FontSize', 13)
+% 
+% xlabel('1, 2, ..., N * M', 'FontSize', 13)
+
+%%
+
+% just plotting the streamfunction after a few time steps 
+
 figure()
-tiledlayout(3,1);
 
-% non-dimensional periods
+contourf(x,y,real(psi))
+title('psi(t, x, y)', 'FontSize', 13)
+xlabel('x', 'FontSize', 13)
+ylabel('y', 'FontSize', 13)
+colorbar
 
-sigma_inverse = nexttile;
-plot(1./sigma_nm(:), '*');
-
-sigma_plot = nexttile;
-plot(sigma_nm(:), '*');
 
 
 %%
@@ -263,7 +315,7 @@ colorbar
 figure()
 
 nexttile;
-plot(0:dt:T*dt, energy, 0:dt:T*dt, energy_KF, '--', 'linewidth', 1.5)
+plot(0:dt:T*dt, energy, 0:dt:T*dt, energy_KF, '--', 0:dt:T*dt, energy_RTS, '-', 'linewidth', 1.5)
 title('True Energy')
 xline(data_steps*dt)
 
