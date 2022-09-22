@@ -1,29 +1,12 @@
-% This script will compute the coefficients of the modes in our simplified
-% dynamical system, not a true solution to the Rossby wave equation. To do 
-% this we use the Kalman filter for data assimilation and an RTS smoother
-% for smoothing. Wedefine 
-%
-%      psi(t, x, y) = \sum_n \sum_m exp(-i sigma_nm t - i beta
-%           x/sigma_nm) c_nm sin(n pi x) sin(m pi y)
-%
-% where
-%
-%      sigma_nm = ( beta/2 ) (1/( pi sqrt(n^2 + m^2) ) )
-%
-% is our non-dimensional dispersion relation and c_nm are coefficients
-% dependent on psi(0, x, y).
-%
-% We assume the KF has full knowledge of A, the time-stepping matrix, and
-% no knowledge of the forcing at every step. We'll provide near perfect
-% data at certain timesteps. 
-%
-% I'm opting to keep this script self-contained, since this will not be a
-% true solution of the Rossby wave equation and instead is a simple
-% dynamical system that we consider. 
+
+clc, clear, close all
 
 %%
 
-clc, clear, close all
+L = 1;
+dx = .01; dy = .01;
+x = 0:dx:L; y = 0:dy:L;
+[X, Y] = meshgrid(x,y);
 
 T = 2000;    % how many steps to take 
 dt = 29;     % time step
@@ -106,11 +89,34 @@ for j = 2:T+1
 
 end
 
-% how to distribute data
-E = eye(N * M);
+% taking the computed values and creating observational data in x-y plane 
 
-% adding noise here to make the data a little fuzzy
-data = E * all_states + noise(1:T+1); 
+psi = zeros(length(x), length(y));
+psi_data = zeros(length(x), length(y), length(400:50:900));
+
+for k = 1:length([400:50:900, 925:25:1300])
+
+for t = [400:50:900, 925:25:1300]
+
+for j = 1:M*N
+
+    psi = psi + all_states(j, t) .* exp(-1i .* pi .* X .* vec_n(j) ) ...
+          .* sin(vec_m(j) .* pi .* Y);
+
+end
+
+    psi_data(:, :, k) = psi;
+
+end 
+
+end
+
+
+% % how to distribute data
+% E = eye(N * M);
+% 
+% % adding noise here to make the data a little fuzzy
+% data = E * all_states + noise(1:T+1); 
 
 %%
 
@@ -241,14 +247,8 @@ end
 
 % comparing the computed solutions
 
-L = 1;
-dx = .01; dy = .01;
-x = 0:dx:L; y = 0:dy:L;
-[X, Y] = meshgrid(x,y);
-
 vec_sigma_nm = sigma_nm(:);
 
-psi = zeros(length(x), length(y));
 psi_KF = zeros(length(x), length(y));
 psi_RTS = zeros(length(x), length(y));
 
@@ -384,3 +384,4 @@ xlabel('Time step', 'FontSize', 13)
 % nexttile;
 % plot(energy_KF(1:end))
 % title('KF Energy')
+

@@ -23,7 +23,7 @@
 
 %%
 
-clc, clear, close 
+clc, clear, close all
 
 T = 2000;    % how many steps to take 
 dt = 29;     % time step
@@ -91,7 +91,7 @@ energy_KF(1) = sum(abs(all_states_KF(:,1)).^2);
 
 % noise = 0.01.*randn(M*N,T+1);
 load('noise_1_sd.mat');
-noise = 0.001.*noise;
+noise = 0.005.*noise;
 
 %%
 
@@ -118,8 +118,8 @@ data = E * all_states + noise(1:T+1);
 % of the normal mode decomposition 
 
 % covariance matrix
-uncertainty = cell(T,1);
-P0 = zeros(M*N, M*N);
+uncertainty = cell(T+1,1);
+P0 = cov( (x0 - x0_KF) * (x0 - x0_KF)' );
 %P0(1,1) = var((1./(vec_m.^2 + vec_n.^2)).*0.1.*randn(1));
 uncertainty{1} = P0;
 
@@ -127,21 +127,32 @@ uncertainty{1} = P0;
 R = var(noise(:)) .* eye(N * M);
 
 % covariance of random forcing
-Q = var(q(:)) .* eye(N * M);
+Q = var(0.5.*q(:)) .* eye(N * M);
 Gamma = eye(N*M); % we apply forcing to all entries of the state vector
 
 % timesteps where we'll incorporate data
-data_steps = 500:20:1000;
+data_steps = [400:50:900, 925:25:1300];
+%data_steps = 1:T+1;
 
 % running the Kalman filter 
 
 state_old = x0_KF;
 P_old = P0;
 temp = dt;
+
+% the RTS smoother needs the states and covariance matrices before any data
+% was introduced, so I'm going to store them along with everything 
+states_before_data = zeros(M*N, T+1);
+states_before_data(:, 1) = state_old;
+uncertainty_before_data = cell(T+1, 1);
+
 for j = 2:T+1
 
     temp_state = A * state_old + .5 .* q(j);
     temp_P = A * P_old * A' + Gamma * Q * Gamma';
+
+    states_before_data(:, j) = temp_state;
+    uncertainty_before_data{j} = temp_P;
     
     % calculate Kalman gain matrix
     K = temp_P * E' * ( E * temp_P * E' + R )^(-1);
@@ -186,25 +197,34 @@ all_states_RTS = zeros(M*N, T+1);
 energy_RTS = zeros(1, T+1);
 
 uncertainty_RTS = cell(T+1,1);
+
+% the initial value for the smoother is just what was computed with the KF
 uncertainty_RTS{end} = uncertainty{end};
+all_states_RTS(:, end) = all_states_KF(:, end);
 
-all_states_RTS(end) = all_states_KF(end);
+forcing_RTS = zeros(M*N,T+1);
 
-for j = T:-1:2
-    
-    temp = (A * uncertainty{j-1} * A' + Gamma * Q * Gamma')^(-1);
-    L = uncertainty{j-1} * A' * temp;
-    M = Q * Gamma' * temp;
+Q_new = Q;
+
+for j = T:-1:1
+
+    L = uncertainty{j} * A' * uncertainty_before_data{j+1}^(-1);
+    M_RTS = Q_new * Gamma' * uncertainty_before_data{j+1}^(-1);
 
     all_states_RTS(:, j) = all_states_KF(:, j) + ...
-                L * (all_states_RTS(:, j) - all_states(:, j));
+                L * (all_states_RTS(:, j+1) - states_before_data(:, j+1));
     uncertainty_RTS{j} = uncertainty{j} + L * (uncertainty_RTS{j+1} ...
-                - temp) * L';
+                - uncertainty_before_data{j+1}) * L';
+
+%     forcing_RTS(:, j) = 0.5 .* q(j) + M * (all_states_RTS(:, j+1) - ...
+%                                             states_before_data(:, j+1));
+    Q_new = Q_new + M_RTS * (uncertainty_RTS{j+1} - uncertainty_before_data{j+1}) ...
+                                * M_RTS';
 
 end
 
-temp = (A * uncertainty{1} * A' + Gamma * Q * Gamma')^(-1);
-L2 = uncertainty{1} * A' * temp;
+% temp = (A * uncertainty{1} * A' + Gamma * Q * Gamma')^(-1)
+% L2 = uncertainty{1} * A' * temp;
 
 for j = 1:T+1 
     
@@ -230,15 +250,20 @@ vec_sigma_nm = sigma_nm(:);
 
 psi = zeros(length(x), length(y));
 psi_KF = zeros(length(x), length(y));
+psi_RTS = zeros(length(x), length(y));
 
+which_step = T+1;
 for j = 1:M*N
         
         % no Stommel solution
         
-        psi_KF = psi_KF + all_states_KF(j, T) .* exp(-1i .* pi .* X .* vec_n(j) ) ...
+        psi_KF = psi_KF + all_states_KF(j, which_step) .* exp(-1i .* pi .* X .* vec_n(j) ) ...
+            .* sin(vec_m(j) .* pi .* Y);
+
+        psi_RTS = psi_KF + all_states_KF(j, which_step) .* exp(-1i .* pi .* X .* vec_n(j) ) ...
             .* sin(vec_m(j) .* pi .* Y);
         
-        psi = psi + all_states(j, T) .* exp(-1i .* pi .* X .* vec_n(j) ) ...
+        psi = psi_RTS + all_states_RTS(j, which_step) .* exp(-1i .* pi .* X .* vec_n(j) ) ...
             .* sin(vec_m(j) .* pi .* Y);
 
 end
@@ -312,12 +337,40 @@ xlabel('x')
 ylabel('y')
 colorbar
 
+
+%%
+
+% plotting the "energy" of the system
+
 figure()
+tiledlayout(3,1)
+
+t = 0:2000;
+nexttile;
+plot(t, energy, t, energy_KF, '--', 'linewidth', 1.5)
+hold on 
+plot(t, energy_RTS, ' -.', 'linewidth', 1.7) 
+xline(data_steps)
+legend('True', 'KF', 'RTS')
+ylabel('Energy', 'FontSize', 13)
 
 nexttile;
-plot(0:dt:T*dt, energy, 0:dt:T*dt, energy_KF, '--', 0:dt:T*dt, energy_RTS, '-', 'linewidth', 1.5)
-title('True Energy')
-xline(data_steps*dt)
+plot(t, energy, t, energy_KF, '--', 'linewidth', 1.5)
+hold on 
+plot(t, energy_RTS, ' -.', 'linewidth', 1.7) 
+xline(data_steps)
+xlim([380, 1325])
+ylim([0, .06])
+legend('True', 'KF', 'RTS')
+ylabel('Energy', 'FontSize', 13)
+
+nexttile; 
+plot(t, energy_KF, t, energy_RTS, '--', 'linewidth', 1.5)
+xline(data_steps)
+ylabel('Energy', 'FontSize', 13)
+legend('KF', 'RTS')
+
+xlabel('Time step', 'FontSize', 13)
 
 % nexttile;
 % plot(energy_KF(1:end))
