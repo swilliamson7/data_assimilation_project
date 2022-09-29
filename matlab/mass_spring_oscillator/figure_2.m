@@ -58,12 +58,15 @@ tiledlayout(4,1)
 
 x1_x1minx3 = nexttile;
 plot(x1_x1minx3, t, all_states(1,:), t, all_states(1,:) - all_states(3,:), '--', 'linewidth', 1.5)
-legend('x_1', 'x_1 - x_3', 'Location', 'best')
+one = legend('$x_1(t)$', '$x_1(t) - x_3(t)$', 'Location', 'best', ...
+    'FontSize', 13);
 ylabel('Displacement')
+one.Interpreter = "latex";
 
 x4_x5minx6 = nexttile;
 plot(x4_x5minx6, t, all_states(4,:), t, all_states(5,:) - all_states(6,:), '--', 'linewidth', 1.5)
-legend('x_4', 'x_5 - x_6')
+two = legend('$x_4(t)$', '$x_5(t) - x_6(t)$', 'FontSize', 13);
+two.Interpreter = "latex";
 ylabel('Displacement')
 
 energy = nexttile;
@@ -73,6 +76,6 @@ ylabel('Energy')
 potential_kinetic_eng = nexttile;
 plot(potential_kinetic_eng, t, kinetic, t, potential, '--', 'linewidth', 1.5)
 ylabel('Energy')
-legend('Kinetic energy', 'Potential energy')
+legend('Kinetic energy', 'Potential energy', 'FontSize', 13)
 
 xlabel('Time step')

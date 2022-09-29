@@ -1,4 +1,4 @@
-clc, clear
+clc, clear, close all 
 
 % This script will run the first experiment: near perfect observations at
 % two time steps. 
@@ -17,19 +17,13 @@ q = @(t) 0.1 * cos( 2 * pi * t / (2.5 / r) );
 Gamma = x0;
 load('random_forcing_0_1_sd.mat')
 
-% building continuous operators
-[Ac, ~, ~] = build_matrices(k, r);
-
-% discrete forward operator 
-A = eye(6) + dt .* Ac; 
-
 % create the "data" for the KF
-load('noise_0_1_sd.mat')
+load('noise_for_data_1_sd.mat')
 [A, Ac, Kc, Rc, all_states, eps, k_forcing, ...
-    ~, ~] = forward_func(x0, k, r, dt, M, B, q, Gamma, u);
+    kinetic, potential] = forward_func(x0, k, r, dt, M, B, q, Gamma, u);
 
 % initial values for the Kalman filter
-data = all_states + noise;
+data = all_states + 0.01.*noise;
 
 x0_KF = x0;
 
@@ -39,13 +33,14 @@ E = eye(6);
 
 Q = var(u); 
 
-R = var(noise) .* eye(6);
+R = var(noise(:)) .* eye(6);
 
 % known forcing seen by KF
-q_KF = @(t) 0.1 * cos( 2 * pi * t / (2.5 / r) );
+q_KF = @(t) 0.5 * q(t);
 
 % create the prediction model, one with no random forcing but correct
-% initial conditions, A, B matrices
+% initial conditions, A, B matrices, and the same forcing as that seen by
+% the Kalman filter 
 [~, ~, ~, ~, all_states_pred, eps_pred, k_forcing_pred, kinetic_pred, ...
                 potential_pred] = forward_func(x0, k, r, dt, M, B, q_KF, 0.0*Gamma, 0.0.*u);
 
@@ -113,10 +108,21 @@ t = 0:M-1;
 
 tiledlayout(3,1);
 
-energy_comparison = nexttile;
-plot(energy_comparison, t, eps, t, eps_pred, '--', 'linewidth', 1.5)
+nexttile;
+plot(t, eps, t, eps_pred, '--', t, eps_KF, '-.', 'linewidth', 1.5)
+xline([5000, 7300], ':')
 ylabel('Energy')
-legend('True energy', 'Prediction energy')
+one = legend('$\mathcal{E}(t)$', '$\tilde{\mathcal{E}}(t, -)$', ...
+                '$\tilde{\mathcal{E}}(t)$', 'FontSize', 15);
+one.Interpreter = "latex";
+
+nexttile;
+plot(t, eps - eps_pred, t, eps - eps_KF, '--', 'linewidth', 1.5)
+xline([5000, 7300], ':')
+ylabel('Energy')
+two = legend('$\mathcal{E}(t) - \tilde{\mathcal{E}}(t,-)$', ...
+                '$\mathcal{E}(t) - \tilde{\mathcal{E}}(t)$', 'FontSize', 15);
+two.Interpreter = "latex";
 
 kalman_mass1_vel = nexttile;
 std_dev = zeros(1,M);
@@ -126,18 +132,14 @@ for j = 1:M
     
 end
 std_dev_plot = errorbar(kalman_mass1_vel, t, all_states_KF(4,:), std_dev);
-%alpha = 0.65;   
+alpha = 0.1;   
 % Set transparency (undocumented)
-%set([std_dev_plot.Bar, std_dev_plot.Line], 'ColorType', 'truecoloralpha', 'ColorData', [std_dev_plot.Line.ColorData(1:3); 255*alpha])
+set([std_dev_plot.Bar, std_dev_plot.Line], 'ColorType', 'truecoloralpha', 'ColorData', [std_dev_plot.Line.ColorData(1:3); 100*alpha])
+hold on
+plot(t, all_states_KF(4,:), 'linewidth', 1.5)
 xline([5000, 7300], ':')
 ylabel('Displacement')
-legend('x_4(t)')
-
-
-kalman_energy = nexttile;
-plot(kalman_energy, t, eps, t, eps_KF, '--', 'linewidth', 1.5)
-xline([5000, 7300], ':')
-ylabel('Energy')
-legend('True energy', 'KF energy')
+three = legend('', '$\tilde{x}_4(t)$', 'FontSize', 15);
+three.Interpreter = "latex";
 
 xlabel('Time step')

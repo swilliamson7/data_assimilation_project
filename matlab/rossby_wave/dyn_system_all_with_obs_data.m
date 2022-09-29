@@ -1,7 +1,12 @@
 % This script will compute the coefficients of the modes in our simplified
 % dynamical system, not a true solution to the Rossby wave equation. To do 
 % this we use the Kalman filter for data assimilation and an RTS smoother
-% for smoothing. Wedefine 
+% for smoothing. The difference between this and the script dyn_sys_KF_all.m
+% is that here we actually build an operator E capable of moving between wave
+% observations and coefficients of our modes, allowing us to 
+% examine properties of this matrix later. 
+% 
+% We define 
 %
 %      psi(t, x, y) = \sum_n \sum_m exp(-i sigma_nm t - i beta
 %           x/sigma_nm) c_nm sin(n pi x) sin(m pi y)
@@ -21,9 +26,14 @@
 % true solution of the Rossby wave equation and instead is a simple
 % dynamical system that we consider. 
 
+clc, clear, close all
+
 %%
 
-clc, clear, close all
+L = 1;
+dx = .01; dy = .01;
+x = 0:dx:L; y = 0:dy:L;
+[X, Y] = meshgrid(x,y);
 
 T = 2000;    % how many steps to take 
 dt = 29;     % time step
@@ -56,6 +66,7 @@ x0 = (1./(vec_n.^2 + vec_m.^2));
 % dispersion relation, given as an N by M matrix, with increases in m
 % happening across rows and increases in n happening across columns 
 sigma_nm = beta * L ./ ( 2 * pi * sqrt(Nn.^2 + Mm.^2) );
+vec_sigma_nm = sigma_nm(:);
 
 % creating a function that computess a specific sigma_nm value
 sigma_func = @(n,m) -beta * L / (2 * pi * sqrt(n^2 + m^2) );
@@ -63,11 +74,9 @@ sigma_func = @(n,m) -beta * L / (2 * pi * sqrt(n^2 + m^2) );
 % building the forward operator for stepping the coefficients 
 A = exp(-b) .* diag( exp(-1i * sigma_nm(:) * dt) );    
 
-% random forcing, will change to be consistently the same forcing 
+% random forcing
 load('forcing_1_sd.mat');
-q = 0.003 .* forcing;
-
-% q = @(t) 0.003 .* randn(M*N, 1);
+q = 0.002 .* forcing;
 
 % pre-allocating storage for quantities we want to store
 
@@ -87,18 +96,24 @@ all_states_KF(:,1) = x0_KF;        % KF has perfect initial condition
 energy_KF = zeros(1, T+1);
 energy_KF(1) = sum(abs(all_states_KF(:,1)).^2);
 
+% storage for the predicted states and energy
+all_states_pred = zeros(M*N, T+1);
+all_states_pred(:,1) = x0_KF;
+
+energy_pred = zeros(1, T+1);
+energy_pred(1) = energy_KF(1);
+
 % noise to add to the data points to make them a little fuzzy
 
-% noise = 0.01.*randn(M*N,T+1);
 load('noise_1_sd.mat');
-noise = 0.005.*noise;
+noise = 0.001.*noise;
 
 %%
 
 % Running the forward model to create the artificial data
 for j = 2:T+1
     
-    state = A * state + q(j);
+    state = A * state + q(:, j);
 
     all_states(:,j) = state;
     
@@ -106,52 +121,66 @@ for j = 2:T+1
 
 end
 
-% how to distribute data
-E = eye(N * M);
+% now we want to create data from the psi values we just computed. This 
+% requires us to build the matrix E differently than in our mass spring 
+% oscillator system
 
-% adding noise here to make the data a little fuzzy
-data = E * all_states + noise(1:T+1); 
+x_vals = [.2:.1:.8, .2:.1:.8];
+y_vals = [0.3.*ones(size(.2:.1:.8)), 0.6.*ones(size(.2:.1:.8))];
+
+E = zeros(length(x_vals), M*N);
+
+for j = 1:length(x_vals)
+    for k = 1:M*N
+
+        E(j,k) = exp(-1i * beta * x_vals(j) / vec_sigma_nm(k) ) ...
+            * sin(vec_n(k) * pi * x_vals(j)) * sin(vec_m(k) * pi * y_vals(j));
+
+    end
+end
+
+% % adding noise here to make the data a little fuzzy
+data = E * all_states + noise(1:14, 1:T+1); 
 
 %%
 
 % Lastly we want to run the Kalman filter and reconstruct the coefficients
 % of the normal mode decomposition 
 
+q_KF = 0.5 .* q;
+
 % covariance matrix
 uncertainty = cell(T+1,1);
 P0 = cov( (x0 - x0_KF) * (x0 - x0_KF)' );
-%P0(1,1) = var((1./(vec_m.^2 + vec_n.^2)).*0.1.*randn(1));
 uncertainty{1} = P0;
 
+uncertainty_before_data = cell(T+1, 1);
+
 % matrix of covariance of noise in the data
-R = var(noise(:)) .* eye(N * M);
+R = var(noise(:)) .* eye(length(x_vals));
 
 % covariance of random forcing
-Q = var(0.5.*q(:)) .* eye(N * M);
+Q = var(q_KF(:)) .* eye(N * M);
 Gamma = eye(N*M); % we apply forcing to all entries of the state vector
 
 % timesteps where we'll incorporate data
 data_steps = [400:50:900, 925:25:1300];
 %data_steps = 1:T+1;
 
-% running the Kalman filter 
+% running the Kalman filter and storing the prediction values as we go
 
 state_old = x0_KF;
 P_old = P0;
 temp = dt;
 
-% the RTS smoother needs the states and covariance matrices before any data
-% was introduced, so I'm going to store them along with everything 
-states_before_data = zeros(M*N, T+1);
-states_before_data(:, 1) = state_old;
-uncertainty_before_data = cell(T+1, 1);
-
 for j = 2:T+1
 
-    temp_state = A * state_old + .5 .* q(j);
+    temp_state = A * state_old + q_KF(:, j);
     temp_P = A * P_old * A' + Gamma * Q * Gamma';
 
-    states_before_data(:, j) = temp_state;
+    all_states_pred(:, j) = temp_state;
+    energy_pred(j) = sum( abs(temp_state).^2 ); 
+
     uncertainty_before_data{j} = temp_P;
     
     % calculate Kalman gain matrix
@@ -212,7 +241,7 @@ for j = T:-1:1
     M_RTS = Q_new * Gamma' * uncertainty_before_data{j+1}^(-1);
 
     all_states_RTS(:, j) = all_states_KF(:, j) + ...
-                L * (all_states_RTS(:, j+1) - states_before_data(:, j+1));
+                L * (all_states_RTS(:, j+1) - all_states_pred(:, j+1));
     uncertainty_RTS{j} = uncertainty{j} + L * (uncertainty_RTS{j+1} ...
                 - uncertainty_before_data{j+1}) * L';
 
@@ -241,38 +270,38 @@ end
 
 % comparing the computed solutions
 
-L = 1;
-dx = .01; dy = .01;
-x = 0:dx:L; y = 0:dy:L;
-[X, Y] = meshgrid(x,y);
-
-vec_sigma_nm = sigma_nm(:);
-
 psi = zeros(length(x), length(y));
 psi_KF = zeros(length(x), length(y));
 psi_RTS = zeros(length(x), length(y));
+psi_pred = zeros(length(x), length(y));
 
-which_step = T+1;
+which_step = 167;
 for j = 1:M*N
         
         % no Stommel solution
         
-        psi_KF = psi_KF + all_states_KF(j, which_step) .* exp(-1i .* pi .* X .* vec_n(j) ) ...
-            .* sin(vec_m(j) .* pi .* Y);
+        psi_KF = psi_KF + all_states_KF(j, which_step) .* exp(-1i .* beta .* X / vec_sigma_nm(j) ) ...
+            .* sin(vec_m(j) .* pi .* Y) .* sin(vec_n(j) .* pi .* X);
 
-        psi_RTS = psi_KF + all_states_KF(j, which_step) .* exp(-1i .* pi .* X .* vec_n(j) ) ...
-            .* sin(vec_m(j) .* pi .* Y);
+        psi_RTS = psi_RTS + all_states_RTS(j, which_step) .* exp(-1i .* beta .* X /vec_sigma_nm(j) ) ...
+            .* sin(vec_m(j) .* pi .* Y) .* sin(vec_n(j) .* pi .* X);
         
-        psi = psi_RTS + all_states_RTS(j, which_step) .* exp(-1i .* pi .* X .* vec_n(j) ) ...
-            .* sin(vec_m(j) .* pi .* Y);
+        psi = psi + all_states(j, which_step) .* exp(-1i .* beta .* X / vec_sigma_nm(j) ) ...
+            .* sin(vec_m(j) .* pi .* Y) .* sin(vec_n(j) .* pi .* X);
+
+        psi_pred = psi_pred + all_states_pred(j, which_step) .* ...
+            exp(-1i .* beta .* X / vec_sigma_nm(j) ) ...
+            .* sin(vec_m(j) .* pi .* Y) .* sin(vec_n(j) .* pi .* X);
 
 end
 
-% with the added stommel solution
+% adding stommel solution
 
 psi_KF = psi_KF + exp(-X * beta / Ra) .* sin(pi .* Y) + (X - 1).* sin(pi .* Y);
 
 psi = psi + exp(-X * beta / Ra) .* sin(pi .* Y) + (X - 1).* sin(pi .* Y);
+
+psi_RTS = psi_RTS + exp(-X * beta / Ra) .* sin(pi .* Y) + (X - 1) .* sin(pi .* Y);
 
 
 %%
@@ -308,10 +337,13 @@ psi = psi + exp(-X * beta / Ra) .* sin(pi .* Y) + (X - 1).* sin(pi .* Y);
 figure()
 
 contourf(x,y,real(psi))
-title('psi(t, x, y)', 'FontSize', 13)
+one_title = title('$\psi(t, x, y)$', 'FontSize', 19);
+one_title.Interpreter = "latex";
 xlabel('x', 'FontSize', 13)
 ylabel('y', 'FontSize', 13)
 colorbar
+hold on
+plot(x_vals, y_vals, 'o', 'linewidth', 4, 'Color', 'r')
 
 
 
@@ -320,7 +352,7 @@ colorbar
 % plotting the computed solutions 
 
 figure()
-tiledlayout(1,2)
+tiledlayout(1, 3)
 
 nexttile;
 contourf(x,y,real(psi))
@@ -337,6 +369,13 @@ xlabel('x')
 ylabel('y')
 colorbar
 
+nexttile;
+contourf(x, y, real(psi_RTS))
+title('RTSWave')
+xlabel('x')
+ylabel('y')
+colorbar
+
 
 %%
 
@@ -347,11 +386,11 @@ tiledlayout(3,1)
 
 t = 0:2000;
 nexttile;
-plot(t, energy, t, energy_KF, '--', 'linewidth', 1.5)
+plot(t, energy, t, energy_pred, t, energy_KF, '--', 'linewidth', 1.5)
 hold on 
 plot(t, energy_RTS, ' -.', 'linewidth', 1.7) 
 xline(data_steps)
-legend('True', 'KF', 'RTS')
+legend('True', 'Pred', 'KF', 'RTS')
 ylabel('Energy', 'FontSize', 13)
 
 nexttile;
@@ -375,3 +414,4 @@ xlabel('Time step', 'FontSize', 13)
 % nexttile;
 % plot(energy_KF(1:end))
 % title('KF Energy')
+

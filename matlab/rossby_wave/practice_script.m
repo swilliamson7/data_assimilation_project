@@ -39,6 +39,7 @@ x0 = (1./(vec_n.^2 + vec_m.^2));
 % dispersion relation, given as an N by M matrix, with increases in m
 % happening across rows and increases in n happening across columns 
 sigma_nm = beta * L ./ ( 2 * pi * sqrt(Nn.^2 + Mm.^2) );
+vec_sigma_nm = sigma_nm(:);
 
 % creating a function that computess a specific sigma_nm value
 sigma_func = @(n,m) -beta * L / (2 * pi * sqrt(n^2 + m^2) );
@@ -46,11 +47,9 @@ sigma_func = @(n,m) -beta * L / (2 * pi * sqrt(n^2 + m^2) );
 % building the forward operator for stepping the coefficients 
 A = exp(-b) .* diag( exp(-1i * sigma_nm(:) * dt) );    
 
-% random forcing, will change to be consistently the same forcing 
+% random forcing
 load('forcing_1_sd.mat');
 q = 0.003 .* forcing;
-
-% q = @(t) 0.003 .* randn(M*N, 1);
 
 % pre-allocating storage for quantities we want to store
 
@@ -72,7 +71,6 @@ energy_KF(1) = sum(abs(all_states_KF(:,1)).^2);
 
 % noise to add to the data points to make them a little fuzzy
 
-% noise = 0.01.*randn(M*N,T+1);
 load('noise_1_sd.mat');
 noise = 0.005.*noise;
 
@@ -89,34 +87,26 @@ for j = 2:T+1
 
 end
 
-% taking the computed values and creating observational data in x-y plane 
+% now we want to create data from the psi values we just computed. This 
+% requires us to build the matrix E differently than in our mass spring 
+% oscillator system
 
-psi = zeros(length(x), length(y));
-psi_data = zeros(length(x), length(y), length(400:50:900));
+x_vals = [.2:.1:.8, .2:.1:.8];
+y_vals = [0.3.*ones(size(.2:.1:.8)), 0.6.*ones(size(.2:.1:.8))];
 
-for k = 1:length([400:50:900, 925:25:1300])
+E = zeros(length(x_vals), M*N);
 
-for t = [400:50:900, 925:25:1300]
+for j = 1:length(x_vals)
+    for k = 1:M*N
 
-for j = 1:M*N
+        E(j,k) = exp(-1i * beta * x_vals(j) / vec_sigma_nm(k) ) ...
+            * sin(vec_n(k) * pi * x_vals(j)) * sin(vec_m(k) * pi * y_vals(j));
 
-    psi = psi + all_states(j, t) .* exp(-1i .* pi .* X .* vec_n(j) ) ...
-          .* sin(vec_m(j) .* pi .* Y);
-
+    end
 end
 
-    psi_data(:, :, k) = psi;
-
-end 
-
-end
-
-
-% % how to distribute data
-% E = eye(N * M);
-% 
 % % adding noise here to make the data a little fuzzy
-% data = E * all_states + noise(1:T+1); 
+data = E * all_states; %+ noise(1:T+1); 
 
 %%
 
@@ -130,7 +120,7 @@ P0 = cov( (x0 - x0_KF) * (x0 - x0_KF)' );
 uncertainty{1} = P0;
 
 % matrix of covariance of noise in the data
-R = var(noise(:)) .* eye(N * M);
+R = var(noise(:)) .* eye(length(x_vals));
 
 % covariance of random forcing
 Q = var(0.5.*q(:)) .* eye(N * M);
@@ -247,8 +237,7 @@ end
 
 % comparing the computed solutions
 
-vec_sigma_nm = sigma_nm(:);
-
+psi = zeros(length(x), length(y));
 psi_KF = zeros(length(x), length(y));
 psi_RTS = zeros(length(x), length(y));
 
@@ -257,14 +246,14 @@ for j = 1:M*N
         
         % no Stommel solution
         
-        psi_KF = psi_KF + all_states_KF(j, which_step) .* exp(-1i .* pi .* X .* vec_n(j) ) ...
-            .* sin(vec_m(j) .* pi .* Y);
+        psi_KF = psi_KF + all_states_KF(j, which_step) .* exp(-1i .* beta .* X / vec_sigma_nm(j) ) ...
+            .* sin(vec_m(j) .* pi .* Y) .* sin(vec_n(j) .* pi .* X);
 
-        psi_RTS = psi_RTS + all_states_RTS(j, which_step) .* exp(-1i .* pi .* X .* vec_n(j) ) ...
-            .* sin(vec_m(j) .* pi .* Y);
+        psi_RTS = psi_RTS + all_states_RTS(j, which_step) .* exp(-1i .* beta .* X /vec_sigma_nm(j) ) ...
+            .* sin(vec_m(j) .* pi .* Y) .* sin(vec_n(j) .* pi .* X);
         
-        psi = psi + all_states(j, which_step) .* exp(-1i .* pi .* X .* vec_n(j) ) ...
-            .* sin(vec_m(j) .* pi .* Y);
+        psi = psi + all_states(j, which_step) .* exp(-1i .* beta .* X / vec_sigma_nm(j) ) ...
+            .* sin(vec_m(j) .* pi .* Y) .* sin(vec_n(j) .* pi .* X);
 
 end
 

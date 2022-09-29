@@ -49,7 +49,7 @@ for j = 2:M
     forcing(j) = k_forcing(j) + u(j);
     
     % step forward
-    state_now = A * state_old + B * k_forcing(j) + B * u(j);
+    state_now = A * state_old + B * k_forcing(j) + Gamma * u(j);
 
     % calculate and store system energy
     kinetic(j) = 0.5 * ( state_now(4:6)' * state_now(4:6) );

@@ -1,7 +1,7 @@
 % This script will compute the coefficients of the modes in our simplified
 % dynamical system, not a true solution to the Rossby wave equation. To do 
 % this we use the Kalman filter for data assimilation and an RTS smoother
-% for smoothing. Wedefine 
+% for smoothing. We define 
 %
 %      psi(t, x, y) = \sum_n \sum_m exp(-i sigma_nm t - i beta
 %           x/sigma_nm) c_nm sin(n pi x) sin(m pi y)
@@ -63,11 +63,9 @@ sigma_func = @(n,m) -beta * L / (2 * pi * sqrt(n^2 + m^2) );
 % building the forward operator for stepping the coefficients 
 A = exp(-b) .* diag( exp(-1i * sigma_nm(:) * dt) );    
 
-% random forcing, will change to be consistently the same forcing 
+% random forcing
 load('forcing_1_sd.mat');
 q = 0.003 .* forcing;
-
-% q = @(t) 0.003 .* randn(M*N, 1);
 
 % pre-allocating storage for quantities we want to store
 
@@ -89,7 +87,6 @@ energy_KF(1) = sum(abs(all_states_KF(:,1)).^2);
 
 % noise to add to the data points to make them a little fuzzy
 
-% noise = 0.01.*randn(M*N,T+1);
 load('noise_1_sd.mat');
 noise = 0.005.*noise;
 
@@ -257,14 +254,16 @@ for j = 1:M*N
         
         % no Stommel solution
         
-        psi_KF = psi_KF + all_states_KF(j, which_step) .* exp(-1i .* pi .* X .* vec_n(j) ) ...
-            .* sin(vec_m(j) .* pi .* Y);
-
-        psi_RTS = psi_RTS + all_states_RTS(j, which_step) .* exp(-1i .* pi .* X .* vec_n(j) ) ...
-            .* sin(vec_m(j) .* pi .* Y);
+        % no Stommel solution
         
-        psi = psi + all_states(j, which_step) .* exp(-1i .* pi .* X .* vec_n(j) ) ...
-            .* sin(vec_m(j) .* pi .* Y);
+        psi_KF = psi_KF + all_states_KF(j, which_step) .* exp(-1i .* beta .* X / vec_sigma_nm(j) ) ...
+            .* sin(vec_m(j) .* pi .* Y) .* sin(vec_n(j) .* pi .* X);
+
+        psi_RTS = psi_RTS + all_states_RTS(j, which_step) .* exp(-1i .* beta .* X /vec_sigma_nm(j) ) ...
+            .* sin(vec_m(j) .* pi .* Y) .* sin(vec_n(j) .* pi .* X);
+        
+        psi = psi + all_states(j, which_step) .* exp(-1i .* beta .* X / vec_sigma_nm(j) ) ...
+            .* sin(vec_m(j) .* pi .* Y) .* sin(vec_n(j) .* pi .* X);
 
 end
 
