@@ -125,8 +125,8 @@ end
 % requires us to build the matrix E differently than in our mass spring 
 % oscillator system
 
-x_vals = [1/8:1/8:7/8, 1/8:1/8:7/8];
-y_vals = [1/3.*ones(size(1/8:1/8:7/8)), 2/3.*ones(size(1/8:1/8:7/8))];
+x_vals = [.2:.1:.8, .2:.1:.8];
+y_vals = [0.3.*ones(size(.2:.1:.8)), 0.6.*ones(size(.2:.1:.8))];
 
 E = zeros(length(x_vals), M*N);
 
@@ -286,7 +286,7 @@ psi_KF = zeros(length(x), length(y));
 psi_RTS = zeros(length(x), length(y));
 psi_pred = zeros(length(x), length(y));
 
-which_step = 167;
+which_step = T+1;
 for j = 1:M*N
         
         % no Stommel solution
@@ -353,14 +353,9 @@ one_title.Interpreter = "latex";
 xlabel('x', 'FontSize', 13)
 ylabel('y', 'FontSize', 13)
 colorbar
-
-% add on the locations of observational data
 hold on
 plot(x_vals, y_vals, 'o', 'linewidth', 4, 'Color', 'r')
 
-% add on where we compute the WBC
-hold on
-plot(0:.01:0.2, 0.5*ones(size(0:.01:0.2)), 'linewidth', 3);
 
 
 %%
@@ -449,21 +444,11 @@ xlabel('Time step', 'FontSize', 13)
 
 [U, S, V] = svd(E);
 
-tiledlayout(2,1);
+tiledlayout(1,1);
 
 nexttile;
-plot(diag(S), '*', 'linewidth', 2)
-xlabel('Singular value number')
-one = legend('$\lambda_j$', 'FontSize', 15);
-one.Interpreter="latex";
-
-nexttile;
-plot(diag(V(:, 1:end-6)*V(:, 1:end-6)'), '*', 'linewidth', 2)
-xlabel('State vector element')
-xticks(1:18)
-ylim([0, 1.5])
-two = legend('diag$(V V^T)_j$', 'FontSize', 15);
-two.Interpreter="latex";
+plot(diag(S), 'linewidth', 1.5)
+xlabel('Singular Value Nu')
 
 % 
 % nexttile;
