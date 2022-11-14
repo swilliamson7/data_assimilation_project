@@ -113,7 +113,7 @@ before_obs = uncertainty{2999};
 after_obs = uncertainty{3010};
 
 figure()
-tiledlayout(3,2);
+tiledlayout(1,2);
 
 diag_P_positions = nexttile;
 y_1 = [before_obs(1,1), before_obs(2,2), before_obs(3,3)];
@@ -124,7 +124,8 @@ xticks(1:3)
 diag_legend = legend('Before observations', 'After observations');
 grid on
 ylabel('Diagonal elements of P', 'FontSize', 12) 
-title('Elements corresponding to positions')
+title('Elements corresponding to positions', 'FontSize', 14)
+xlabel('Element of x', 'FontSize', 12)
 
 diag_P_velocities = nexttile;
 
@@ -136,45 +137,45 @@ xticks(4:6)
 legend('Before observations', 'After observations')
 grid on
 ylabel('Diagonal elements of P', 'FontSize', 12)
-title('Elements corresponding to velocities')
+title('Elements corresponding to velocities', 'FontSize', 14)
 
 
-rows_P_pos_before = nexttile;
-
-plot(rows_P_pos_before, 1:3, before_obs(1:6,1:3)', 'linewidth', 1.5)
-xticks(1:3)
-ylabel('Row elems. of P before obs.', 'FontSize', 12)
-row_legend = legend('Row 1', 'Row 2', 'Row 3', 'Row 4', 'Row 5', 'Row 6');
-row_legend.Layout.Tile='south';
-row_legend.Orientation='horizontal';
-grid on
-
-rows_P_vel_before = nexttile;
-plot(rows_P_vel_before, 4:6, before_obs(1:6,4:6)', 'linewidth', 1.5)
-xticks(4:6)
-ylabel('Row elems. of P before obs.', 'FontSize', 12)
-%legend('Row 1', 'Row 2', 'Row 3', 'Row 4', 'Row 5', 'Row 6')
-grid on
-
-
-rows_P_pos_after = nexttile;
-
-plot(rows_P_pos_after, 1:3, after_obs(1:6,1:3)', 'linewidth', 1.5)
-xticks(1:3)
-ylabel('Row elems. of P after obs.', 'FontSize', 12)
-ylim([-6,10])
-%legend('Row 1', 'Row 2', 'Row 3', 'Row 4', 'Row 5', 'Row 6')
-grid on
-
- 
-xlabel('Element of x', 'FontSize', 12)
-
-rows_P_vel_after = nexttile;
-plot(rows_P_vel_after, 4:6, after_obs(1:6,4:6)', 'linewidth', 1.5)
-xticks(4:6)
-ylabel('Row elems. of P after obs.', 'FontSize', 12)
-%legend('Row 1', 'Row 2', 'Row 3', 'Row 4', 'Row 5', 'Row 6')
-grid on
+% rows_P_pos_before = nexttile;
+% 
+% plot(rows_P_pos_before, 1:3, before_obs(1:6,1:3)', 'linewidth', 1.5)
+% xticks(1:3)
+% ylabel('Row elems. of P before obs.', 'FontSize', 12)
+% row_legend = legend('Row 1', 'Row 2', 'Row 3', 'Row 4', 'Row 5', 'Row 6');
+% row_legend.Layout.Tile='south';
+% row_legend.Orientation='horizontal';
+% grid on
+% 
+% rows_P_vel_before = nexttile;
+% plot(rows_P_vel_before, 4:6, before_obs(1:6,4:6)', 'linewidth', 1.5)
+% xticks(4:6)
+% ylabel('Row elems. of P before obs.', 'FontSize', 12)
+% %legend('Row 1', 'Row 2', 'Row 3', 'Row 4', 'Row 5', 'Row 6')
+% grid on
+% 
+% 
+% rows_P_pos_after = nexttile;
+% 
+% plot(rows_P_pos_after, 1:3, after_obs(1:6,1:3)', 'linewidth', 1.5)
+% xticks(1:3)
+% ylabel('Row elems. of P after obs.', 'FontSize', 12)
+% ylim([-6,10])
+% %legend('Row 1', 'Row 2', 'Row 3', 'Row 4', 'Row 5', 'Row 6')
+% grid on
+% 
+%  
+% xlabel('Element of x', 'FontSize', 12)
+% 
+% rows_P_vel_after = nexttile;
+% plot(rows_P_vel_after, 4:6, after_obs(1:6,4:6)', 'linewidth', 1.5)
+% xticks(4:6)
+% ylabel('Row elems. of P after obs.', 'FontSize', 12)
+% %legend('Row 1', 'Row 2', 'Row 3', 'Row 4', 'Row 5', 'Row 6')
+% grid on
 
 
 xlabel('Element of x', 'FontSize', 12)
