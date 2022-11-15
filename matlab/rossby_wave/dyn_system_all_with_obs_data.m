@@ -142,9 +142,10 @@ y_vals = [1/3.*ones(size(1/8:1/8:7/8)), 2/3.*ones(size(1/8:1/8:7/8))];
 % if we want to examine the impact of more data use the following for the x
 % values and y values 
 
-% x_vals = [1/8:1/8:7/8, 1/8:1/8:7/8, 1/8:1/8:7/8, 1/8:1/8:7/8];
-% y_vals = [1/5.*ones(size(1/8:1/8:7/8)), 2/5.*ones(size(1/8:1/8:7/8)), ...
-%     3/5.*ones(size(1/8:1/8:7/8)), 4/5.*ones(size(1/8:1/8:7/8))];
+% x_range = 1/8:1/10:7/8;
+% x_vals = [x_range, x_range, x_range, x_range];
+% y_vals = [1/5.*ones(size(x_range)), 2/5.*ones(size(x_range)), ...
+%           3/5.*ones(size(x_range)), 4/5.*ones(size(x_range))];
 
 E = zeros(length(x_vals), M*N + 1);
 
@@ -277,6 +278,8 @@ forcing_RTS(:, end) = q_KF(:, end);
 
 L_operators = cell(T, 1);
 
+M_operators = cell(T, 1); 
+
 Q_new = Q;
 
 for j = T:-1:1
@@ -297,7 +300,8 @@ for j = T:-1:1
                                 * M_RTS';
 
     Q_RTS{j} = Q_new;
-
+    
+    M_operators{j} = M_RTS;
     L_operators{j} = L;
 
 end
@@ -399,9 +403,13 @@ end
 
 steady_uncertainty_KF = zeros(1, T+1);
 steady_uncertainty_RTS = zeros(1, T+1); 
+
 L_matrix_diag_real = zeros(1, T);
 L_matrix_diag_imag = zeros(1, T);
 L_norms = zeros(1, T);
+
+M_norms = zeros(1, T); 
+M_multiplied_norms = zeros(1,T);
 
 forcing_RTS_uncertainty = zeros(1,T+1);
 
@@ -420,29 +428,75 @@ for j = 1:T
     L_matrix_diag_imag(j) = imag(L_operators{j}(2,2)); 
     L_norms(j) = norm(L_operators{j});
 
+    M_norms(j) = norm(M_operators{j});
+
+end
+
+M_multiplied_norms(T) = norm(M_operators{j});
+temp = M_operators{T};
+for j = T-1:-1:1
+    
+    temp = M_operators{j} * temp;
+    M_multiplied_norms(j) = norm(temp);
+
+end
+
+%% computing the vector that we can use to find the uncertainty of the WBC 
+
+F = zeros(N * M + 1, 1);
+
+for j = 1:M*N
+
+F(j) = exp(-1i .* beta .* 0 /vec_sigma_nm(j) ) ...
+            * sin(vec_m(j) .* pi .* 0.5) .* sin(vec_n(j) .* pi .* 0) ...
+       - exp(-1i .* beta .* 0.2 /vec_sigma_nm(j) ) ...
+            * sin(vec_m(j) .* pi .* 0.5) .* sin(vec_n(j) .* pi .* 0.2);
+
+end
+
+F(end) =  exp(-0 * beta / Ra) * sin(pi .* 0.5) + (0 - 1) .* sin(pi .* 0.5)...
+        - exp(-0.2 * beta / Ra) * sin(pi .* 0.5) + (0.2 - 1) .* sin(pi .* 0.5);
+
+%% using F to find the uncertainty values in the WBC estimates 
+
+wbc_uncertainty_KF = zeros(T+1, 1);
+wbc_uncertainty_RTS = zeros(T+1, 1);
+
+for j = 1:T+1 
+    
+    wbc_uncertainty_KF(j) = sqrt(F' * uncertainty{j} * F);
+
+    wbc_uncertainty_RTS(j) = sqrt(F' * uncertainty_RTS{j} * F);
+
 end
 
 
-%%
+%% Generates the plots for the rossby wave
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Everything past this point is a plot of something 
 t = 0:2000;
 
 tiledlayout(2,1);
 
-% nexttile;
-% plot(t, wbc_true)
-% hold on
-% plot(t, wbc_stommel, '--', 'linewidth', 4)
-
 nexttile;
 plot(t, wbc_KF)
 hold on
+
+% fill([t(:), wbc_KF], [wbc_KF + WBC_uncertainty_KF, wbc_KF - WBC_uncertainty_KF], ...
+%                         'k', 'FaceAlpha', 0.1, 'EdgeAlpha', 0.3)
+% hold on
+% shadedErrorBar(t, wbc_KF, WBC_uncertainty_KF, 'lineprops','-b','patchSaturation',0.000001);
+% hold on 
 plot(t, wbc_stommel, '--', 'linewidth', 1.5)
 ylim([0,0.6])
+hold on
 xline(data_steps, ':')
 xlabel('Time step', 'FontSize', 14)
 legend('KF', 'Steady solution', 'FontSize', 15)
+
+
 
 nexttile;
 plot(t, wbc_RTS)
@@ -453,12 +507,14 @@ xline(data_steps, ':')
 xlabel('Time step', 'FontSize', 14)
 legend('RTS', 'Steady solution', 'FontSize', 15)
 
+% nexttile; 
+% 
+% plot(t, steady_uncertainty_KF, t, steady_uncertainty_RTS, 'linewidth', 1.5)
+% xlabel('Time step', 'FontSize', 14)
 
 %%
 
 % Plotting the modes and their inverses 
-
-% creating my figure 10 
 
 figure()
 tiledlayout(2,1);
@@ -645,28 +701,15 @@ two.Interpreter="latex";
 
 %%
 
-% random last minute plots 
-
-tiledlayout(1,1);
-
-nexttile;
-plot(t, steady_uncertainty_KF, t, steady_uncertainty_RTS, '--', 'linewidth', 1.5)
-xline(data_steps, ':')
-legend('KF Uncertainty', 'RTS Uncertainty', 'FontSize', 14)
-xlabel('Time step')
-
-
-%%
-
 tiledlayout(2,1);
 
 nexttile;
-plot(t(1:end-1), L_norms, 'LineWidth', 1.5)
+plot(t(2:end), L_norms, 'LineWidth', 1.5)
 xline(data_steps, ':')
 xlabel('Time step', 'FontSize', 14)
 
 nexttile; 
-plot(t(1:end-1), L_matrix_diag_real, t(1:end-1), L_matrix_diag_imag, '--', ...
+plot(t(2:end), L_matrix_diag_real, t(1:end-1), L_matrix_diag_imag, '--', ...
             'LineWidth', 1.5)
 xline(data_steps, ':')
 one = legend('Re$(L_{22}(t))$', 'Im$(L_{22}(t))$', 'FontSize', 14);
@@ -675,14 +718,58 @@ one.Interpreter = "latex";
 xlabel('Time step', 'FontSize', 14)
 
 %%
+tiledlayout(1,1);
+
+nexttile;
+plot(t(2:end), M_norms, 'linewidth', 1.5)
+xline(data_steps, ':')
+xlabel('Time step', 'FontSize', 14)
+one = legend('$||\mathbf{M}(t)||$', 'FontSize', 17);
+one.Interpreter = "latex";
+% 
+% nexttile;
+% plot(-20:1:0, M_multiplied_norms(end:-1:end-20))
+
+% nexttile;
+% plot(t, steady_uncertainty_KF, t, steady_uncertainty_RTS, '--', 'linewidth', 1.5)
+% xline(data_steps, ':')
+% legend('KF Uncertainty', 'RTS Uncertainty', 'FontSize', 14)
+% xlabel('Time step')
+
+
+%%
 
 tiledlayout(2,1);
 
 nexttile;
 plot(t, forcing_RTS(2, :))
-forcing = legend('$u_2(t)$');
+forcing = legend('$u_2(t)$', 'FontSize', 17);
 forcing.Interpreter = "latex";
 
 nexttile;
-plot(t, forcing_RTS_uncertainty)
+plot(t, forcing_RTS_uncertainty, 'linewidth', 1.5)
 xline(data_steps, ':')
+two = legend('$(\mathbf{Q}_{2, 2}(t, +))^{1/2}$', 'FontSize', 17);
+two.Interpreter = "latex";
+xlabel('Timestep', 'FontSize', 15)
+
+%% 
+% 
+% tiledlayout(2,1);
+% 
+% nexttile;
+% plot(t, real(all_states_KF(end, :)), 'linewidth', 1.5)
+% hold on
+% std_dev_plot = errorbar(t, real(all_states_KF(end, :)), steady_uncertainty_KF);
+% alpha = 0.1;   
+% % Set transparency (undocumented)
+% set([std_dev_plot.Bar, std_dev_plot.Line], 'ColorType', 'truecoloralpha', 'ColorData', [std_dev_plot.Line.ColorData(1:3); 100*alpha])
+% 
+% nexttile;
+% plot(t, real(all_states_RTS(end, :)), 'linewidth', 1.5)
+% hold on
+% std_dev_plot = errorbar(t, real(all_states_RTS(end, :)), steady_uncertainty_RTS);
+% alpha = 0.1;   
+% % Set transparency (undocumented)
+% set([std_dev_plot.Bar, std_dev_plot.Line], 'ColorType', 'truecoloralpha', 'ColorData', [std_dev_plot.Line.ColorData(1:3); 100*alpha])
+% hold on

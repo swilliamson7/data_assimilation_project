@@ -117,9 +117,18 @@ for j = 2:M
     
 end 
 
+x2_uncertainty = zeros(1, M);
+
+
+for j = 1:M
+
+    x2_uncertainty(j) = uncertainty{j}(2,2)^(1/2);
+
+end
+
+
 t = 0:M-1;
 
-tiledlayout(3,1);
 
 tiledlayout(4,1);
 
@@ -140,13 +149,26 @@ two = legend('$\mathcal{E}(t) - \tilde{\mathcal{E}}(t, -)$', ...
                 '$\mathcal{E}(t) - \tilde{\mathcal{E}}(t)$', 'FontSize', 15);
 two.Interpreter = "latex";
 
+% nexttile;
+% plot(t, all_states(2,:), t, all_states_pred(2,:), '--', t, all_states_KF(2,:), ...
+%     '-.', 'linewidth', 1.5)
+% ylabel('Displacement')
+% xline(data_points, ':')
+% three = legend('$x_2(t)$', '$\tilde{x}_2(t, -)$', '$\tilde{x_2(t)}$', ...
+%                 'FontSize', 12);
+% three.Interpreter="latex";
+
 nexttile;
-plot(t, all_states(2,:), t, all_states_pred(2,:), '--', t, all_states_KF(2,:), ...
-    '-.', 'linewidth', 1.5)
+plot(t, all_states(2,:), 'linewidth', 1.5)
+shadedErrorBar(t, all_states_KF(2,:), x2_uncertainty, 'lineprops','-r','patchSaturation',0.33)
+hold on 
+
 ylabel('Displacement')
 xline(data_points, ':')
-three = legend('$x_2(t)$', '$\tilde{x}_2(t, -)$', '$\tilde{x_2(t)}$', ...
-                'FontSize', 12);
+% three = legend('$x_2(t)$', '$\tilde{x}_2(t, -)$', '$\tilde{x_2(t)}$', ...
+%                 'FontSize', 12);
+three = legend('$x_2(t)$', '$\tilde{x_2}(t)$', ...
+                'FontSize', 14.5);
 three.Interpreter="latex";
 
 nexttile;
@@ -155,7 +177,7 @@ plot(t, all_states(2, :) - all_states_pred(2,:), t, all_states(2,:) ...
 xline(data_points, ':')
 yline(0)
 four = legend('$x_2(t) - \tilde{x}_2(t,-)$', '$x_2(t) - \tilde{x}_2(t)$', ...
-            'FontSize', 12);
+            'FontSize', 14.5);
 ylabel('Displacement')
 four.Interpreter = "latex";
 

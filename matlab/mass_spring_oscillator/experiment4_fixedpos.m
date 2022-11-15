@@ -165,22 +165,37 @@ for j = 2:M
     
 end 
 
+x3_uncertainty = zeros(1, M);
+x6_uncertainty = zeros(1, M);
+
+for j = 1:M
+
+    x3_uncertainty(j) = uncertainty{j}(3,3)^(1/2);
+
+    x6_uncertainty(j) = uncertainty{j}(6,6)^(1/2);
+
+end
+
 t = 0:M-1;
 
 tiledlayout(4,1);
 
 nexttile;
-plot(t, all_states(3,:), t, all_states_pred(3,:), '--', t, all_states_KF(3,:), '-.', 'linewidth', 1.5)
+plot(t, all_states(3,:), 'linewidth', 1.5)
+shadedErrorBar(t, all_states_KF(3,:), x3_uncertainty, 'lineprops','-r','patchSaturation',0.33)
+hold on 
 xline(dataset_1, ':')
 ylabel('Displacement')
-one = legend('$x_3(t)$', '$\tilde{x}_3(t,-)$', '$\tilde{x}_3(t)$', 'FontSize', 13);
+one = legend('$x_3(t)$', '$\tilde{x}_3(t)$', 'FontSize', 13);
 one.Interpreter = "latex";
 
 nexttile;
-plot(t, all_states(6,:), t, all_states_pred(6,:), '--', t, all_states_KF(6,:), '-.', 'linewidth', 1.5)
+plot(t, all_states(6,:), 'linewidth', 1.5)
+shadedErrorBar(t, all_states_KF(6,:), x6_uncertainty, 'lineprops','-r','patchSaturation',0.33)
+hold on 
 xline(dataset_1, ':')
 ylabel('Velocity')
-one = legend('$x_6(t)$', '$\tilde{x}_6(t,-)$', '$\tilde{x}_6(t)$', 'FontSize', 13);
+one = legend('$x_6(t)$', '$\tilde{x}_6(t)$', 'FontSize', 13);
 one.Interpreter = "latex";
 
 % nexttile;

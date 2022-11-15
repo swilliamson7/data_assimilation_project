@@ -124,18 +124,16 @@ two = legend('$\mathcal{E}(t) - \tilde{\mathcal{E}}(t,-)$', ...
                 '$\mathcal{E}(t) - \tilde{\mathcal{E}}(t)$', 'FontSize', 15);
 two.Interpreter = "latex";
 
-kalman_mass1_vel = nexttile;
+nexttile;
 std_dev = zeros(1,M);
 for j = 1:M
     
     std_dev(j) = sqrt(uncertainty{j}(4,4));
     
 end
-std_dev_plot = errorbar(kalman_mass1_vel, t, all_states_KF(4,:), std_dev);
-alpha = 0.1;   
-% Set transparency (undocumented)
-set([std_dev_plot.Bar, std_dev_plot.Line], 'ColorType', 'truecoloralpha', 'ColorData', [std_dev_plot.Line.ColorData(1:3); 100*alpha])
-hold on
+
+shadedErrorBar(t, all_states_KF(4,:), std_dev, 'lineprops','-b','patchSaturation',0.33)
+hold on 
 plot(t, all_states_KF(4,:), 'linewidth', 1.5)
 xline([5000, 7300], ':')
 ylabel('Displacement')
