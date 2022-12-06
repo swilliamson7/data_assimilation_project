@@ -210,7 +210,7 @@ plot(t, eps, t, eps_pred, '--', t, eps_KF, '-.', 'linewidth', 1.5)
 xline(dataset_1, ':')
 ylabel('Energy')
 two = legend('$\mathcal{E}(t)$', '$\tilde{\mathcal{E}}(t, -)$', ...
-                '$\mathcal{E}(t)$', 'FontSize', 14);
+                '$\tilde{\mathcal{E}}(t)$', 'FontSize', 14);
 two.Interpreter = "latex";
 
 nexttile;

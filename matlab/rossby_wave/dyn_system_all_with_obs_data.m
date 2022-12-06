@@ -30,14 +30,13 @@ clc, clear, close all
 
 %%
 
-L = 1;
+L = 1;  % length of square basin, 1 b/c non-dimensionalized
 dx = .01; dy = .01;
 x = 0:dx:L; y = 0:dy:L;
 [X, Y] = meshgrid(x,y);
 
 T = 2000;    % how many steps to take 
 dt = 29;     % time step
-L = 1;       % length of square basin, 1 b/c non-dimensionalized
 b = 1.8e-3;
 a = 6.3e6;   % radius of Earth, kilometers
 theta = 30;  % latitude we use for computation of beta and f 
@@ -59,6 +58,19 @@ N = length(n); M = length(m);
 [Nn,Mm] = meshgrid(n',m');  
 vec_n = Nn(:);
 vec_m = Mm(:);
+
+% inline Stommel solution function 
+
+C1 = exp(1/2 * ( -sqrt(4 * pi^2 * Ra^2 + beta^2)/Ra - beta / Ra ) );
+C2 = exp(1/2 * ( sqrt(4 * pi^2 * Ra^2 + beta^2)/Ra - beta / Ra) );
+
+exp_neg = @(x) exp(x/2 .* (-sqrt(4 * pi^2 * Ra^2 + beta^2)/Ra - beta / Ra ));
+           
+exp_pos = @(x) exp(x/2 .* ( sqrt(4 * pi^2 * Ra^2 + beta^2)/Ra - beta / Ra) );
+
+stommel_soln = @(x, y) 1/(pi^2 * Ra) .* ( ((C2 - 1) / (C2 - C1)) .* exp_neg(x) ...
+                + ((1 - C1) / (C2 - C1)) .* exp_pos(x) - 1 ) ...
+                .* sin(pi * y);
 
 % initial condition for the system
 x0 = (1./(vec_n.^2 + vec_m.^2));
@@ -96,7 +108,7 @@ energy(1) = sum(abs(all_states(1:end-1,1)).^2);
 
 % storage for the KF computed states and energy
 
-x0_KF = 1.2.*x0;                    % 20percent larger IC for KF  
+x0_KF = 1.5 .* x0;                    % 50percent larger IC for KF  
 all_states_KF = zeros(M*N + 1, T+1);
 all_states_KF(:,1) = x0_KF;        
 
@@ -139,6 +151,11 @@ end
 x_vals = [1/8:1/8:7/8, 1/8:1/8:7/8];
 y_vals = [1/3.*ones(size(1/8:1/8:7/8)), 2/3.*ones(size(1/8:1/8:7/8))];
 
+
+% x_vals = [.2:.1:.8, .2:.1:.8];
+% y_vals = [0.3.*ones(size(.2:.1:.8)), 0.6.*ones(size(.2:.1:.8))];
+
+
 % if we want to examine the impact of more data use the following for the x
 % values and y values 
 
@@ -156,9 +173,15 @@ for j = 1:length(x_vals)
             * sin(vec_n(k) * pi * x_vals(j)) * sin(vec_m(k) * pi * y_vals(j));
 
     end
+
+%     E(j,end) = exp(-x_vals(j) * beta / Ra) * sin(pi * y_vals(j)) ...
+%                    + (x_vals(j) - 1) * sin(pi * y_vals(j));
+
+      E(j, end) = stommel_soln(x_vals(j), y_vals(j));
+
 end
 
-E(end, end) = 1;
+%E(end, end) = 1;
 
 % adding noise here to make the data a little fuzzy
 data = E * all_states + noise(length(x_vals), 1:T+1); 
@@ -306,15 +329,11 @@ for j = T:-1:1
 
 end
 
-% temp = (A * uncertainty{1} * A' + Gamma * Q * Gamma')^(-1)
-% L2 = uncertainty{1} * A' * temp;
-
 for j = 1:T+1 
     
     energy_RTS(j) = sum( abs( all_states_RTS(1:end-1,j) ).^2 );
 
 end
-
 
 %% 
 
@@ -357,21 +376,28 @@ end
 
 % adding stommel solution
 
-psi_KF{k} = psi_KF{k} + all_states_KF(end,k) .* (exp(-X * beta / Ra) .* ...
-        sin(pi .* Y) + (X - 1).* sin(pi .* Y));
+% psi_KF{k} = psi_KF{k} + all_states_KF(end,k) .* (exp(-X * beta / Ra) .* ...
+%         sin(pi .* Y) + (X - 1).* sin(pi .* Y));
 
-psi{k} = psi{k} + all_states(end, k) .* (exp(-X * beta / Ra) .* ...
-        sin(pi .* Y) + (X - 1).* sin(pi .* Y));
+psi_KF{k} = psi_KF{k} + all_states_KF(end, k) .* stommel_soln(X, Y);
 
-psi_RTS{k} = psi_RTS{k} + all_states_RTS(end,k) .* (exp(-X * beta / Ra) ...
-        .* sin(pi .* Y) + (X - 1) .* sin(pi .* Y));
+% psi{k} = psi{k} + all_states(end, k) .* (exp(-X * beta / Ra) .* ...
+%         sin(pi .* Y) + (X - 1).* sin(pi .* Y));
+psi{k} = psi{k} + all_states(end, k) .* stommel_soln(X, Y);
 
-psi_pred{k} = psi_pred{k} + all_states_pred(end,k) .* (exp(-X * beta / Ra) ...
-        .* sin(pi .* Y) + (X - 1) .* sin(pi .* Y));
+% psi_RTS{k} = psi_RTS{k} + all_states_RTS(end,k) .* (exp(-X * beta / Ra) ...
+%         .* sin(pi .* Y) + (X - 1) .* sin(pi .* Y));
+psi_RTS{k} = psi_RTS{k} + all_states_RTS(end,k) .* stommel_soln(X, Y);
+
+% psi_pred{k} = psi_pred{k} + all_states_pred(end,k) .* (exp(-X * beta / Ra) ...
+%         .* sin(pi .* Y) + (X - 1) .* sin(pi .* Y));
+
+psi_pred{k} = psi_pred{k} + all_states_pred(end,k) .* stommel_soln(X, Y);
 
 end
 
-psi_stommel = exp(-X * beta / Ra) .* sin(pi .* Y) + (X - 1) .* sin(pi .* Y);
+% psi_stommel = exp(-X * beta / Ra) .* sin(pi .* Y) + (X - 1) .* sin(pi .* Y);
+psi_stommel = stommel_soln(X, Y);
 
 %% 
 
@@ -449,13 +475,15 @@ for j = 1:M*N
 
 F(j) = exp(-1i .* beta .* 0 /vec_sigma_nm(j) ) ...
             * sin(vec_m(j) .* pi .* 0.5) .* sin(vec_n(j) .* pi .* 0) ...
-       - exp(-1i .* beta .* 0.2 /vec_sigma_nm(j) ) ...
+       - exp(-1i .* beta .* 0.2 /vec_sigma_nm(j) ) ... 
             * sin(vec_m(j) .* pi .* 0.5) .* sin(vec_n(j) .* pi .* 0.2);
 
 end
 
-F(end) =  exp(-0 * beta / Ra) * sin(pi .* 0.5) + (0 - 1) .* sin(pi .* 0.5)...
-        - exp(-0.2 * beta / Ra) * sin(pi .* 0.5) + (0.2 - 1) .* sin(pi .* 0.5);
+% F(end) =  exp(-0 * beta / Ra) * sin(pi .* 0.5) + (0 - 1) .* sin(pi .* 0.5)...
+%         - exp(-0.2 * beta / Ra) * sin(pi .* 0.5) + (0.2 - 1) .* sin(pi .* 0.5);
+
+F(end) = stommel_soln(0, 0.5) - stommel_soln(0.2, 0.5);
 
 %% using F to find the uncertainty values in the WBC estimates 
 
@@ -478,22 +506,22 @@ end
 % Everything past this point is a plot of something 
 t = 0:2000;
 
-tiledlayout(2,1);
+tiledlayout(3,1);
 
 nexttile;
 plot(t, wbc_KF)
 hold on
 
-% fill([t(:), wbc_KF], [wbc_KF + WBC_uncertainty_KF, wbc_KF - WBC_uncertainty_KF], ...
+% fill([t, fliplr(t)], [wbc_KF' + wbc_uncertainty_KF', fliplr(wbc_KF' - wbc_uncertainty_KF')], ...
 %                         'k', 'FaceAlpha', 0.1, 'EdgeAlpha', 0.3)
 % hold on
-% shadedErrorBar(t, wbc_KF, WBC_uncertainty_KF, 'lineprops','-b','patchSaturation',0.000001);
+% nexttile;
+% shadedErrorBar(t, wbc_KF, wbc_uncertainty_KF, 'lineprops','-b','patchSaturation',0.000001);
 % hold on 
 plot(t, wbc_stommel, '--', 'linewidth', 1.5)
-ylim([0,0.6])
 hold on
 xline(data_steps, ':')
-xlabel('Time step', 'FontSize', 14)
+%xlabel('Time step', 'FontSize', 14)
 legend('KF', 'Steady solution', 'FontSize', 15)
 
 
@@ -502,15 +530,17 @@ nexttile;
 plot(t, wbc_RTS)
 hold on
 plot(t, wbc_stommel, '--', 'linewidth', 1.5)
-ylim([0,0.6])
 xline(data_steps, ':')
-xlabel('Time step', 'FontSize', 14)
+%xlabel('Time step', 'FontSize', 14)
 legend('RTS', 'Steady solution', 'FontSize', 15)
 
-% nexttile; 
-% 
-% plot(t, steady_uncertainty_KF, t, steady_uncertainty_RTS, 'linewidth', 1.5)
-% xlabel('Time step', 'FontSize', 14)
+nexttile; 
+
+plot(t, wbc_uncertainty_KF, t, wbc_uncertainty_RTS, '--', 'linewidth', 1.5)
+xline(data_steps, ':')
+legend('KF Uncertainty', 'RTS Uncertainty', 'fontsize', 15)
+xlabel('Time step', 'FontSize', 14)
+
 
 %%
 
@@ -601,9 +631,9 @@ nexttile;
 plot(t, energy, t, energy_pred, 'linewidth', 1.5)
 %plot(t, energy, 'linewidth', 1.5)
 hold on 
-plot(t, energy_KF, '--', 'linewidth', 1.7)
+plot(t, energy_KF, '--', 'linewidth', 1.9)
 hold on
-plot(t, energy_RTS, ' -.', 'linewidth', 1.9) 
+plot(t, energy_RTS, ' -.', 'linewidth', 1.5) 
 xline(data_steps, ':')
 legend('True', 'Pred', 'KF', 'RTS', 'FontSize', 12.5)
 %legend('True', 'KF', 'RTS', 'FontSize', 12.5)
@@ -613,9 +643,9 @@ nexttile;
 plot(t, energy, t, energy_pred, '--', 'linewidth', 1.5)
 %plot(t, energy, 'linewidth', 1.5)
 hold on 
-plot(t, energy_KF, '--', 'linewidth', 1.7)
+plot(t, energy_KF, '--', 'linewidth', 1.9)
 hold on
-plot(t, energy_RTS, ' -.', 'linewidth', 1.7) 
+plot(t, energy_RTS, ' -.', 'linewidth', 1.5) 
 xline(data_steps, ':')
 xlim([400, 1350])
 legend('True', 'Pred', 'KF', 'RTS', 'FontSize', 12.5)
@@ -721,7 +751,7 @@ xlabel('Time step', 'FontSize', 14)
 tiledlayout(1,1);
 
 nexttile;
-plot(t(2:end), M_norms, 'linewidth', 1.5)
+plot(t(1:end-1), M_norms, 'linewidth', 1.5)
 xline(data_steps, ':')
 xlabel('Time step', 'FontSize', 14)
 one = legend('$||\mathbf{M}(t)||$', 'FontSize', 17);

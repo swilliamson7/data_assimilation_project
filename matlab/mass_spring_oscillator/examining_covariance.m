@@ -179,3 +179,13 @@ title('Elements corresponding to velocities', 'FontSize', 14)
 
 
 xlabel('Element of x', 'FontSize', 12)
+
+%%
+
+[u_before, s_before, v_before] = svd(before_obs);
+
+[u_after, s_after, v_after] = svd(after_obs);
+
+%%
+
+
