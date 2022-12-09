@@ -13,11 +13,11 @@ q = @(t) 0.1 * cos( 2 * pi * t / (2.5 / r) );
 %Gamma = 0;
 Gamma = x0;
 
-load('random_forcing.mat')
+load('random_forcing_0_1_sd.mat')
 
 noise = 0.0.*randn(6, M);
 [A, Ac, Kc, Rc, all_states, eps, k_forcing, ...
-    kinetic, potential] = forward_func(x0, k, r, dt, M, B, q, Gamma, u, noise);
+    kinetic, potential] = forward_func(x0, k, r, dt, M, B, q, Gamma, u);
 
 t = 0:M-1;
 
@@ -52,12 +52,14 @@ tiledlayout(3,1)
 
 q_plot = nexttile;
 plot(q_plot, t, k_forcing + u)
-ylabel('q_1(t)')
+one = ylabel('$q_1(t)$', 'FontSize', 15);
+one.Interpreter = "latex";
 
 x1_x1minx3 = nexttile;
 plot(x1_x1minx3, t, all_states(1,:), t, all_states(1,:) - all_states(3, :), '--', 'linewidth', 1.5)
 ylabel('Displacement')
-legend('x_1', 'x_1 - x_3')
+two = legend('$x_1(t)$', '$x_1(t) - x_3(t)$', 'FontSize', 14);
+two.Interpreter = "latex";
 
 % x4 = nexttile;
 % plot(x4, t, all_states(4,:), 'linewidth', 1.5)
@@ -65,8 +67,8 @@ legend('x_1', 'x_1 - x_3')
 % legend('x_4')
 
 tot_energy = nexttile;
-plot(tot_energy, t, eps, 'linewidth', 1.5)
+plot(tot_energy, t, eps, t, kinetic, '--', t, potential, '-.', 'linewidth', 1.5)
 ylabel('Energy')
-legend('Total energy')
+legend('Total energy', 'Kinetic energy', 'Potential energy', 'FontSize', 14)
 
 xlabel('Time step')

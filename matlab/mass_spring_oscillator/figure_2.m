@@ -1,8 +1,7 @@
 % This script will generate the updated Figure 2. 
 % In this I'm just running the forward model and plotting the same
 % quantities that Carl has in his paper. There is no random forcing or
-% deterministic forcing, and no KF. 
-
+% deterministic forcing, and no KF.
 clc, clear 
 
 dt = 0.001;
@@ -54,28 +53,36 @@ end
 
 t = 1:10000;
 
-tiledlayout(4,1)
+tiledlayout(3,1)
 
 x1_x1minx3 = nexttile;
 plot(x1_x1minx3, t, all_states(1,:), t, all_states(1,:) - all_states(3,:), '--', 'linewidth', 1.5)
+colormap(gray)
 one = legend('$x_1(t)$', '$x_1(t) - x_3(t)$', 'Location', 'best', ...
     'FontSize', 13);
 ylabel('Displacement')
 one.Interpreter = "latex";
 
+
 x4_x5minx6 = nexttile;
 plot(x4_x5minx6, t, all_states(4,:), t, all_states(5,:) - all_states(6,:), '--', 'linewidth', 1.5)
+colormap(gray)
 two = legend('$x_4(t)$', '$x_5(t) - x_6(t)$', 'FontSize', 13);
 two.Interpreter = "latex";
 ylabel('Displacement')
 
+
 energy = nexttile;
 plot(energy, t, eps, 'linewidth', 1.5)
+colormap(gray)
 ylabel('Energy')
-
-potential_kinetic_eng = nexttile;
-plot(potential_kinetic_eng, t, kinetic, t, potential, '--', 'linewidth', 1.5)
+hold on 
+% potential_kinetic_eng = nexttile;
+plot(t, kinetic, '--', t, potential, '-.', 'linewidth', 1.5)
+colormap(gray)
 ylabel('Energy')
-legend('Kinetic energy', 'Potential energy', 'FontSize', 13)
+legend('Total energy', 'Kinetic energy', 'Potential energy', 'FontSize', 13)
 
 xlabel('Time step')
+
+
