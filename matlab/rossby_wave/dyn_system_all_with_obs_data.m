@@ -737,6 +737,8 @@ nexttile;
 plot(t(2:end), L_norms, 'LineWidth', 1.5)
 xline(data_steps, ':')
 xlabel('Time step', 'FontSize', 14)
+two = legend('$||\mathbf{L}(t)||$', 'FontSize', 14);
+two.Interpreter = "latex";
 
 nexttile; 
 plot(t(2:end), L_matrix_diag_real, t(1:end-1), L_matrix_diag_imag, '--', ...
