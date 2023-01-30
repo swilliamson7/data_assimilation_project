@@ -391,6 +391,7 @@ psi{k} = psi{k} + all_states(end, k) .* stommel_soln(X, Y);
 
 % psi_RTS{k} = psi_RTS{k} + all_states_RTS(end,k) .* (exp(-X * beta / Ra) ...
 %         .* sin(pi .* Y) + (X - 1) .* sin(pi .* Y));
+
 psi_RTS{k} = psi_RTS{k} + all_states_RTS(end,k) .* stommel_soln(X, Y);
 
 % psi_pred{k} = psi_pred{k} + all_states_pred(end,k) .* (exp(-X * beta / Ra) ...

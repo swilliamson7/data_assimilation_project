@@ -53,7 +53,9 @@ tiledlayout(3,1)
 q_plot = nexttile;
 plot(q_plot, t, k_forcing + u)
 one = ylabel('$q_1(t)$', 'FontSize', 15);
+five = legend('$q_1(t)$', 'FontSize', 14);
 one.Interpreter = "latex";
+five.Interpreter = "latex";
 
 x1_x1minx3 = nexttile;
 plot(x1_x1minx3, t, all_states(1,:), t, all_states(1,:) - all_states(3, :), '--', 'linewidth', 1.5)

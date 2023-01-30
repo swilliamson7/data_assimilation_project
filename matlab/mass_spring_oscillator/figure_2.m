@@ -57,7 +57,6 @@ tiledlayout(3,1)
 
 x1_x1minx3 = nexttile;
 plot(x1_x1minx3, t, all_states(1,:), t, all_states(1,:) - all_states(3,:), '--', 'linewidth', 1.5)
-colormap(gray)
 one = legend('$x_1(t)$', '$x_1(t) - x_3(t)$', 'Location', 'best', ...
     'FontSize', 13);
 ylabel('Displacement')
@@ -66,7 +65,6 @@ one.Interpreter = "latex";
 
 x4_x5minx6 = nexttile;
 plot(x4_x5minx6, t, all_states(4,:), t, all_states(5,:) - all_states(6,:), '--', 'linewidth', 1.5)
-colormap(gray)
 two = legend('$x_4(t)$', '$x_5(t) - x_6(t)$', 'FontSize', 13);
 two.Interpreter = "latex";
 ylabel('Displacement')
@@ -74,12 +72,10 @@ ylabel('Displacement')
 
 energy = nexttile;
 plot(energy, t, eps, 'linewidth', 1.5)
-colormap(gray)
 ylabel('Energy')
 hold on 
 % potential_kinetic_eng = nexttile;
 plot(t, kinetic, '--', t, potential, '-.', 'linewidth', 1.5)
-colormap(gray)
 ylabel('Energy')
 legend('Total energy', 'Kinetic energy', 'Potential energy', 'FontSize', 13)
 
