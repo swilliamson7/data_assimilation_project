@@ -67,9 +67,9 @@ for j = 2:M
     
 end 
 
-all_states_diff_noise = cell{50, 1};
+all_states_diff_noise = cell(50, 1);
 
-for j = 1:50
+for d = 1:50
     
     % adding on one version of the noise 
     noise = randn(6,M);
@@ -173,7 +173,7 @@ for j = 1:50
     
     end
 
-    all_states
+    all_states_diff_noise{d} = all_states_KF;
 
 end
 
@@ -182,44 +182,59 @@ t = 0:M-1;
 tiledlayout(2,1);
 
 nexttile;
-plot(t, all_states(3,:), 'linewidth', 1.5)
-shadedErrorBar(t, all_states_KF(3,:), x3_uncertainty, 'lineprops','-r','patchSaturation',0.33)
-hold on 
-xline(dataset_1, ':')
-ylabel('Displacement', 'FontSize', 15)
-one = legend('$x_3(t)$', '$\tilde{x}_3(t)$', 'FontSize', 16);
-one.Interpreter = "latex";
+for j = 1:50
+    plot(t, all_states_diff_noise{j}(1,:))
+    hold on 
+end
+plot(t, all_states(1,:))
 
 nexttile;
-plot(t, all_states(6,:), 'linewidth', 1.5)
-shadedErrorBar(t, all_states_KF(6,:), x6_uncertainty, 'lineprops','-r','patchSaturation',0.33)
-hold on 
-xline(dataset_1, ':')
-ylabel('Velocity', 'FontSize', 15)
-one = legend('$x_6(t)$', '$\tilde{x}_6(t)$', 'FontSize', 16);
-one.Interpreter = "latex";
+for j = 1:50
+    plot(t, all_states_diff_noise{j}(1,:))
+    hold on 
+end
+plot(t, all_states(1,:))
+
 
 % nexttile;
-% plot(t, all_states(1,:), t, all_states_pred(1,:), '--', t, all_states_KF(1,:), '-.', 'linewidth', 1.5)
+% plot(t, all_states(3,:), 'linewidth', 1.5)
+% shadedErrorBar(t, all_states_KF(3,:), x3_uncertainty, 'lineprops','-r','patchSaturation',0.33)
+% hold on 
 % xline(dataset_1, ':')
-% ylabel('Displacement')
-% one = legend('$x_1(t)$', '$\tilde{x}_1(t,-)$', '$\tilde{x}_1(t)$', 'FontSize', 13);
+% ylabel('Displacement', 'FontSize', 15)
+% one = legend('$x_3(t)$', '$\tilde{x}_3(t)$', 'FontSize', 16);
 % one.Interpreter = "latex";
-
-% nexttile;
-% plot(t, eps, t, eps_pred, '--', t, eps_KF, '-.', 'linewidth', 1.5)
-% xline(dataset_1, ':')
-% ylabel('Energy')
-% two = legend('$\mathcal{E}(t)$', '$\tilde{\mathcal{E}}(t, -)$', ...
-%                 '$\tilde{\mathcal{E}}(t)$', 'FontSize', 14);
-% two.Interpreter = "latex";
 % 
 % nexttile;
-% plot(t, abs(eps - eps_pred), t, abs(eps - eps_KF), '--', 'linewidth', 1.5)
+% plot(t, all_states(6,:), 'linewidth', 1.5)
+% shadedErrorBar(t, all_states_KF(6,:), x6_uncertainty, 'lineprops','-r','patchSaturation',0.33)
+% hold on 
 % xline(dataset_1, ':')
-% ylabel('Energy')
-% two = legend('$|\mathcal{E}(t) - \tilde{\mathcal{E}}(t, -)|$', ...
-%                 '$|\mathcal{E}(t) - \tilde{\mathcal{E}}(t)|$', 'FontSize', 14);
-% two.Interpreter = "latex";
-
-xlabel('Time step', 'FontSize', 15)
+% ylabel('Velocity', 'FontSize', 15)
+% one = legend('$x_6(t)$', '$\tilde{x}_6(t)$', 'FontSize', 16);
+% one.Interpreter = "latex";
+% 
+% % nexttile;
+% % plot(t, all_states(1,:), t, all_states_pred(1,:), '--', t, all_states_KF(1,:), '-.', 'linewidth', 1.5)
+% % xline(dataset_1, ':')
+% % ylabel('Displacement')
+% % one = legend('$x_1(t)$', '$\tilde{x}_1(t,-)$', '$\tilde{x}_1(t)$', 'FontSize', 13);
+% % one.Interpreter = "latex";
+% 
+% % nexttile;
+% % plot(t, eps, t, eps_pred, '--', t, eps_KF, '-.', 'linewidth', 1.5)
+% % xline(dataset_1, ':')
+% % ylabel('Energy')
+% % two = legend('$\mathcal{E}(t)$', '$\tilde{\mathcal{E}}(t, -)$', ...
+% %                 '$\tilde{\mathcal{E}}(t)$', 'FontSize', 14);
+% % two.Interpreter = "latex";
+% % 
+% % nexttile;
+% % plot(t, abs(eps - eps_pred), t, abs(eps - eps_KF), '--', 'linewidth', 1.5)
+% % xline(dataset_1, ':')
+% % ylabel('Energy')
+% % two = legend('$|\mathcal{E}(t) - \tilde{\mathcal{E}}(t, -)|$', ...
+% %                 '$|\mathcal{E}(t) - \tilde{\mathcal{E}}(t)|$', 'FontSize', 14);
+% % two.Interpreter = "latex";
+% 
+% xlabel('Time step', 'FontSize', 15)

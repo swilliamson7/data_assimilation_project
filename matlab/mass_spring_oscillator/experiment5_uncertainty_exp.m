@@ -188,6 +188,14 @@ for j = 1:50
 end
 plot(t, all_states(1,:))
 
+nexttile;
+for j = 1:50
+    plot(t, all_states_diff_noise{j}(1,:))
+    hold on 
+end
+plot(t, all_states(1,:))
+
+
 % nexttile;
 % plot(t, all_states(3,:), 'linewidth', 1.5)
 % shadedErrorBar(t, all_states_KF(3,:), x3_uncertainty, 'lineprops','-r','patchSaturation',0.33)
