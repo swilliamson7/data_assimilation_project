@@ -29,8 +29,6 @@ load('noise_for_data_1_sd.mat')
 % the forward model here for the data points, rather than with the separate
 % function 
 
-A = eye(6) + dt.*Ac;
-
 % place to store state vector
 all_states = zeros(6,M);
 all_states(:,1) = x0;

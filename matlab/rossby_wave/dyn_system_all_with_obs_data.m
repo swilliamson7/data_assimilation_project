@@ -87,17 +87,17 @@ vec_sigma_nm = sigma_nm(:);
 sigma_func = @(n,m) -beta * L / (2 * pi * sqrt(n^2 + m^2) );
 
 % building the forward operator for stepping the coefficients 
-%A = exp(-b) .* diag( exp(-1i * sigma_nm(:) * dt) ); % original 
+A = exp(-b) .* diag( exp(-1i * sigma_nm(:) * dt) ); % original 
 
-A = exp(-b * dt) .* diag( exp(-1i * sigma_nm(:) * dt) ); % edited 
+%A = exp(-b * dt) .* diag( exp(-1i * sigma_nm(:) * dt) ); % edited 
 
 % adding in the final diagonal element for the Stommel solution 
 A(end + 1, end + 1) = 1;
 
 % random forcing
 load('new_forcing_1_sd.mat');
-% q = 0.002 .* forcing;   % original 
-q = 0.007 .* forcing; 
+q = 0.002 .* forcing;   % original 
+% q = 0.007 .* forcing; 
 q(end, :) = 0;
 
 % pre-allocating storage for quantities
@@ -128,8 +128,8 @@ energy_pred(1) = energy_KF(1);
 % noise to add to the data points to make them a little fuzzy
 
 load('new_noise_1_sd.mat');
-% noise = 0.001.*noise; % original 
-noise = 0.001.*noise;    % edited 
+noise = 0.001.*noise; % original 
+% noise = 0.001.*noise;    % edited 
 
 %%
 
@@ -196,7 +196,7 @@ data = E * all_states + noise(length(x_vals), 1:T+1);
 % of the normal mode decomposition 
 
 
-q_KF = 0.7 .* q;        % 50percent smaller forcing field for KF      
+q_KF = 0.5 .* q;        % 50percent smaller forcing field for KF      
 q_KF(end,:) = 0;
 
 % covariance matrix
@@ -504,7 +504,7 @@ for j = 1:T+1
 end
 
 
-%% Generates the plots for the rossby wave
+%% Generates *all* the plots for the rossby wave experiments 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -559,12 +559,15 @@ tiledlayout(2,1);
 
 sigma_plot = nexttile;
 plot(2*pi./abs(sigma_nm(:)), '*', 'LineWidth', 1.5);
+one = legend('$2 \pi / | \sigma_{nm} |$', 'FontSize', 15);
+one.Interpreter = "latex";
 hold on
-yline(dt, '--', 'LineWidth', 2)
 ylabel('Non-dim Periods', 'FontSize', 13)
 
 sigma_inverse = nexttile;
 plot(abs(sigma_nm(:)), '*', 'LineWidth', 1.5);
+two = legend('$| \sigma_{nm}|$', 'FontSize', 15);
+two.Interpreter = "latex";
 ylabel('Radian freq.', 'FontSize', 13)
 
 % log_initial = nexttile;
